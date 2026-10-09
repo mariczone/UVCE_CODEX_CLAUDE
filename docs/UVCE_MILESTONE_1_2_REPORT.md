@@ -6,7 +6,12 @@ and a final commit with these documents, the benchmark data, evidence logging in
 (page cards show one consistent snapshot; feature list marks M2 residency as implemented). Builds on the
 Milestone 0 report ([`UVCE_MILESTONE_0_REPORT.md`](UVCE_MILESTONE_0_REPORT.md)).
 
-**Verdict.** Milestone 1 is complete **except the hardware-GPU baseline**, which needs a machine with a GPU — the
+> **Update (same day, local run):** the hardware-GPU baseline is done on an RTX 3070 (Windows 11, Chromium/ANGLE D3D11):
+> all automated suites pass, 60 Hz held up to 300 characters, the frame is CPU-submission bound, and the manual
+> browser pass found no problems — see [`benchmark-results/gpu/2026-10-09-rtx3070/`](benchmark-results/gpu/2026-10-09-rtx3070/README.md).
+> A Windows-only bug in `tools/uvce/generate-fixtures.ts` (main-module check) was found and fixed during that run.
+
+**Verdict.** Milestone 1 is complete **except the hardware-GPU baseline** (since done, see above), which needs a machine with a GPU — the
 exact commands are in [`LOCAL_TEST_CHECKLIST.md`](LOCAL_TEST_CHECKLIST.md) §2. Milestone 2 is complete for the
 requested scope (grouped atlases with mip-safe gutters, generation-checked handles, budget / eviction / retry /
 backoff / prefetch, swap-storm test). KTX2 and usage-driven atlas grouping are deliberately left for later. All
@@ -19,7 +24,7 @@ numbers below come from runs in this GPU-less container (Chromium 141 + SwiftSha
 | M1 | WebGL context-loss handling | Done | `onContextLost` / `onContextRestored` in the registry, decoded `ImageBitmap` copies, GPU-timer reset; e2e: pages re-upload with **0** page requests and the frame is pixel-identical; UI button "simulate GPU context loss (1 s)" |
 | M1 | Crossing / arch parity tests | Done (+ glass) | `src/app/parity-scenes.ts` variants `crossing`, `arch`, `glass`; 4 variant cases match the CPU reference with 0 pixels beyond ±3; negative controls for stale order and unsorted glass |
 | M1 | Transparent world objects in the painter sort | Done | `addSortedObject()`; glass ranks between the characters (ADR-04) |
-| M1 | Hardware-GPU baseline | **Open** | needs a GPU: `pnpm bench:baseline -- --gpu` (checklist §2) |
+| M1 | Hardware-GPU baseline | Done (local) | RTX 3070: [`benchmark-results/gpu/2026-10-09-rtx3070/`](benchmark-results/gpu/2026-10-09-rtx3070/README.md) |
 | M2 | Shared / grouped atlases | Done | compiled manifest v2: `atlasGroup`, page `items`, global dedupe; fixtures pack `body_base` + `head_base` into `core` (ADR-08) |
 | M2 | Mip-safe gutters | Done | 2^L alignment and gaps, `TEXTURE_MAX_LEVEL` clamp, `image.mip-align` validation; CPU mip-bleed simulation test + mutation check (ADR-06) |
 | M2 | Handles with generations | Done | `PageHandle { index, generation }`, ABA unit test, epoch-gated per-frame audit with a defence-in-depth test (ADR-09) |
@@ -148,7 +153,7 @@ All figures: headless Chromium 141 + SwiftShader, 4-core container, CPU time per
 
 ## 5. Known limitations
 
-- **No GPU numbers yet.** Every timing here is SwiftShader in a 4-core container. Mipmapped (trilinear) sampling is
+- **GPU numbers come from one machine** (RTX 3070, see the update above). Every other timing here is SwiftShader in a 4-core container. Mipmapped (trilinear) sampling is
   CPU work there; on a GPU its cost is expected to be small, but that is unmeasured until the checklist run.
 - **Memory cost of mip safety:** for the fixtures, alignment and gutters add 32 % to level-0 page bytes and the
   chains bring the total to 1.76× M0's pages. Lower `mipLevels` per item, better packing or KTX2 can reduce it.

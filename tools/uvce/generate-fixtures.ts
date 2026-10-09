@@ -5,6 +5,7 @@
  */
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DIRECTIONS, type Direction8, byDirection } from '../../src/uvce/core/directions.ts';
 import { formatIssues } from '../../src/uvce/core/issues.ts';
 import type { RgbaImage } from '../../src/uvce/compositor/rgba.ts';
@@ -124,7 +125,8 @@ function argValue(args: string[], name: string): string | undefined {
   return i >= 0 ? args[i + 1] : undefined;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL: a hand-built `file://${argv[1]}` never matches on Windows (backslashes, missing third slash).
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
   const outDir = argValue(args, '--out') ?? DEFAULT_SOURCE_DIR;
   const seed = Number(argValue(args, '--seed') ?? DEFAULT_SEED);

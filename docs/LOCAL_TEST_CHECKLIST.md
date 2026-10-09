@@ -71,6 +71,9 @@ pnpm bench:stages -- --gpu --out docs/benchmark-results/gpu/<date>-<gpu>/stages.
 
 - ถ้ามีชื่อ GPU จริง (เช่น `ANGLE (NVIDIA ...)`, `Apple M2 ...`, `Intel(R) Iris ...`) แปลว่าใช้ได้
 - ถ้ามีคำว่า `SwiftShader` แปลว่า headless Chromium ไม่ได้ใช้ GPU ให้รันใหม่โดยเพิ่ม `--headed` (จะมีหน้าต่าง browser เด้งขึ้นมา ปล่อยไว้อย่าไปยุ่งกับมัน)
+- **Windows:** headless + `--gpu` ได้ SwiftShader เสมอในเครื่องที่ทดสอบ (RTX 3070, 2026-10-09) ให้ใส่ `--headed` ตั้งแต่แรกทุกคำสั่ง
+- **วันที่:** ถ้าเครื่องตั้งปฏิทินพุทธศักราช `Get-Date -Format yyyy-MM-dd` จะได้ปี 2569 ให้ใช้
+  `(Get-Date).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)` แทน
 
 ข้อนี้ไม่บังคับ: ถ้าอยากเทียบกับ M0 บน GPU เดียวกัน ให้ build M0 แยกไว้อีก folder แล้วรันแบบ A/B
 
