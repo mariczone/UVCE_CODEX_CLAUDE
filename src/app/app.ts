@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { SourceAssetRegistry, type PageLoader } from '../uvce/assets/source-registry.ts';
+import { SourceAssetRegistry } from '../uvce/assets/source-registry.ts';
+import { createBitmapFetcher, createTextureUploader } from '../uvce/render/webgl/page-io.ts';
 import { RollingSeries, summarize } from '../uvce/bench/frame-stats.ts';
 import { type CrowdMember, HERO_ID, companionAppearance, generateCrowd, heroAppearance, patrolPose } from '../uvce/bench/crowd.ts';
 import { type AnimationState, switchClip } from '../uvce/core/animation.ts';
 import { withSlot } from '../uvce/core/appearance-resolver.ts';
 import { type Direction8, directionCenterYaw, facingYawForDirection, normalizeAngle, viewYawForCharacter } from '../uvce/core/directions.ts';
 import type { AppearanceDefinition } from '../uvce/schema/appearance.ts';
-import type { CompiledManifest, CompiledPage, ManifestIndex } from '../uvce/schema/compiled-manifest.ts';
+import type { CompiledManifest, ManifestIndex } from '../uvce/schema/compiled-manifest.ts';
 import { indexManifest } from '../uvce/schema/compiled-manifest.ts';
 import type { CharacterInstance, RenderMode } from '../uvce/render/contracts.ts';
 import { LayeredCharacterRenderer } from '../uvce/render/webgl/layered-renderer.ts';
@@ -51,32 +52,7 @@ export interface FrameSnapshot {
   programs: number;
   gpuMs: number | null;
   character: ReturnType<LayeredCharacterRenderer['getMetrics']>;
-  registry: ReturnType<SourceAssetRegistry<THREE.Texture>['stats']>;
-}
-
-function textureLoader(three: THREE.WebGLRenderer, forceFilter: 'linear' | 'nearest' | null): PageLoader<THREE.Texture> {
-  const loader = new THREE.TextureLoader();
-  return {
-    async load(page: CompiledPage, url: string) {
-      const tex = await loader.loadAsync(url);
-      tex.name = page.id;
-      tex.colorSpace = THREE.NoColorSpace; // raw sRGB-encoded values; blending happens in sRGB space
-      tex.premultiplyAlpha = true; // straight PNG -> premultiplied on upload (filtering-correct)
-      tex.flipY = true;
-      tex.generateMipmaps = false; // mip-safe padding is Milestone 2
-      const filter = (forceFilter ?? page.filter) === 'nearest' ? THREE.NearestFilter : THREE.LinearFilter;
-      tex.magFilter = filter;
-      tex.minFilter = filter;
-      tex.wrapS = THREE.ClampToEdgeWrapping;
-      tex.wrapT = THREE.ClampToEdgeWrapping;
-      tex.needsUpdate = true;
-      three.initTexture(tex); // upload now: "RESIDENT" means on the GPU, not just downloaded
-      return tex;
-    },
-    dispose(tex) {
-      tex.dispose();
-    },
-  };
+  registry: ReturnType<SourceAssetRegistry<ImageBitmap, THREE.Texture>['stats']>;
 }
 
 export class UvceApp {
@@ -84,7 +60,11 @@ export class UvceApp {
   readonly index: ManifestIndex;
   readonly three: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
-  readonly registry: SourceAssetRegistry<THREE.Texture>;
+  readonly registry: SourceAssetRegistry<ImageBitmap, THREE.Texture>;
+  /** True between webglcontextlost and webglcontextrestored. */
+  contextLost = false;
+  private frameNo = 0;
+  private readonly loseContextExt: { loseContext(): void; restoreContext(): void } | null;
   readonly characters: LayeredCharacterRenderer;
   readonly overlay: DebugOverlay;
   readonly env: EnvironmentInfo;
@@ -150,7 +130,25 @@ export class UvceApp {
       hardwareConcurrency: navigator.hardwareConcurrency,
       crossOriginIsolated: window.crossOriginIsolated === true,
     };
-    this.registry = new SourceAssetRegistry(this.index, opts.assetBaseUrl, textureLoader(this.three, this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest')));
+    this.registry = new SourceAssetRegistry(
+      this.index,
+      opts.assetBaseUrl,
+      createBitmapFetcher(),
+      createTextureUploader(this.three, { forceFilter: this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest') }),
+      { budgetBytes: this.params.budgetMiB * 1024 * 1024 },
+    );
+    this.loseContextExt = gl.getExtension('WEBGL_lose_context');
+    // three.js handles its own state on loss/restore; the registry re-uploads pages from decoded copies.
+    this.canvas.addEventListener('webglcontextlost', () => {
+      this.contextLost = true;
+      this.registry.onContextLost();
+      this.gpuTimer.reset();
+    });
+    this.canvas.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false;
+      this.gpuTimer.reset();
+      this.registry.onContextRestored();
+    });
     const parity = this.params.scene === 'parity';
     const pixel = parity || this.params.scene === 'studio';
     this.stage = parity ? createParityStage(this.scene, PARITY_VARIANTS[this.params.variant]) : pixel ? createStudioStage(this.scene) : createStage(this.scene);
@@ -311,6 +309,44 @@ export class UvceApp {
     this.hero.facingYaw = this.heroState.facingYaw;
   }
 
+  /** Simulates GPU loss/restore via WEBGL_lose_context (tests, debug UI). */
+  loseContext(): boolean {
+    if (!this.loseContextExt) return false;
+    this.loseContextExt.loseContext();
+    return true;
+  }
+
+  restoreContext(): boolean {
+    if (!this.loseContextExt) return false;
+    this.loseContextExt.restoreContext();
+    return true;
+  }
+
+  /**
+   * Swap storm step (deterministic sweep): changes `changes` (character, slot) pairs in a fixed order, so every
+   * `characters * 4 / changes` steps all slots switch to the next "wave" of items (variant 1 -> 2 -> 3 -> 1).
+   * Items of the previous wave therefore lose every user (evictable) and are needed again two waves later
+   * (reload). Appearances are immutable: every change is a new appearance object.
+   */
+  stormStep(step: number, changes: number): void {
+    const slots = ['hair', 'hat', 'armor', 'weapon'] as const;
+    const n = this.instances.length;
+    if (n === 0) return;
+    for (let k = 0; k < changes; k++) {
+      const pair = step * changes + k;
+      const i = pair % n;
+      const slot = slots[Math.floor(pair / n) % slots.length] as string;
+      const wave = Math.floor(pair / (n * slots.length));
+      const variants = [...(this.index.itemsBySlot.get(slot) ?? [])].map((it) => it.id).sort();
+      const item = (i + wave) % 7 === 0 || variants.length === 0 ? null : (variants[wave % variants.length] as string);
+      const inst = this.instances[i] as CharacterInstance;
+      inst.appearance = withSlot(inst.appearance, slot, item);
+      if (i === 0) this.heroState.appearance = inst.appearance;
+      const member = this.members[i];
+      if (member) member.appearance = inst.appearance;
+    }
+  }
+
   /** Orbits the perspective camera around its target so it looks along compass yaw `yaw` (same distance/height). */
   setCameraViewYaw(yaw: number): void {
     if (!(this.camera instanceof THREE.PerspectiveCamera)) return;
@@ -348,6 +384,8 @@ export class UvceApp {
 
   tick(): void {
     const t0 = performance.now();
+    // Between frames: start fetches, bounded uploads, budget eviction (pins come from the previous prepare).
+    this.registry.beginFrame(++this.frameNo);
     this.controls?.update();
     this.updateWorld();
     this.characters.prepareFrame(this.instances, this.simTimeMs);
@@ -426,7 +464,7 @@ export class UvceApp {
     for (;;) {
       this.tick();
       const m = this.characters.getMetrics();
-      if (this.registry.stats().fetching === 0 && m.pendingLayers === 0) break;
+      if (!this.contextLost && this.registry.isIdle() && m.pendingLayers === 0) break;
       if (performance.now() > until) throw new Error('timeout waiting for asset pages');
       await new Promise((r) => setTimeout(r, 20));
     }

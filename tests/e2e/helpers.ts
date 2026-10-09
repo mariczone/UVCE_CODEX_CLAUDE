@@ -9,8 +9,8 @@ export interface UvceTestApi {
     drawCalls: number;
     triangles: number;
     count: number;
-    character: { visibleCharacters: number; visibleLayers: number; pendingLayers: number; failedLayers: number; uniqueVisibleAppearances: number };
-    registry: { resident: number; loads: number; failed: number };
+    character: { visibleCharacters: number; visibleLayers: number; pendingLayers: number; failedLayers: number; uniqueVisibleAppearances: number; staleBindings: number };
+    registry: RegistryStatsView;
   };
   setCount(n: number): void;
   setSeed(s: number): void;
@@ -22,7 +22,32 @@ export interface UvceTestApi {
   waitForIdle(): Promise<void>;
   heroDebug(): { direction: string; appearanceKey: string; rank: number; issues: { code: string }[]; layers: { layer: string; itemId: string; order: number }[] } | null;
   paintOrder(): string[];
-  pageStatuses(): { pageId: string; owner: string; state: string; error: string | null }[];
+  pageStatuses(): { pageId: string; group: string; state: string; refs: number; error: string | null; fetches: number; evictions: number; cancels: number }[];
+  auditBindings(): { visibleLayers: number; violations: number };
+  registryStats(): RegistryStatsView;
+  loseContext(): boolean;
+  restoreContext(): boolean;
+  isContextLost(): boolean;
+  stormStep(step: number, changes: number): void;
+  tick(): void;
+  assetTransfer(): { requests: number; pageRequests: number; encodedBytes: number };
+}
+
+export interface RegistryStatsView {
+  byState: Record<'RESIDENT' | 'UPLOAD_QUEUED' | 'FAILED' | 'EVICTED' | 'REQUESTED' | 'FETCHING', number>;
+  fetches: number;
+  reloads: number;
+  cancelled: number;
+  retries: number;
+  failures: number;
+  uploads: number;
+  evictions: number;
+  contextLosses: number;
+  staleResolves: number;
+  residentBytes: number;
+  pinnedBytes: number;
+  budgetBytes: number;
+  overBudget: boolean;
 }
 
 declare global {

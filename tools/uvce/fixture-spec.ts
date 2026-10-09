@@ -69,6 +69,8 @@ export interface ItemSpec {
   id: string;
   slot: string;
   displayName: string;
+  /** Items that are always co-used share atlas pages. */
+  atlasGroup?: string;
   /** Which layers it provides and to which socket each attaches. */
   parts: { layer: FixtureLayer; attach: FixtureSocket | 'root'; animated: boolean }[];
 }
@@ -78,12 +80,13 @@ export const ITEMS: ItemSpec[] = [
     id: 'body_base',
     slot: 'body',
     displayName: 'Base body',
+    atlasGroup: 'core',
     parts: [
       { layer: 'body', attach: 'root', animated: true },
       { layer: 'arm_front', attach: 'root', animated: true },
     ],
   },
-  { id: 'head_base', slot: 'head', displayName: 'Base head', parts: [{ layer: 'head', attach: 'neck', animated: false }] },
+  { id: 'head_base', slot: 'head', displayName: 'Base head', atlasGroup: 'core', parts: [{ layer: 'head', attach: 'neck', animated: false }] },
   ...(['01', '02'] as const).map((n) => ({
     id: `hair_${n}`,
     slot: 'hair',

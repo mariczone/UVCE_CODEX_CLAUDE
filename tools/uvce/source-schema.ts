@@ -21,6 +21,8 @@ import {
 import type { ParseResult } from '../../src/uvce/schema/compiled-manifest.ts';
 
 export const SOURCE_MANIFEST_SCHEMA = 'uvce-source-manifest-v1';
+/** Linear (HD cutout) pages stay bleed-free down to mip level 3 (1/8 size) unless an item overrides it. */
+export const DEFAULT_LINEAR_MIP_LEVELS = 3;
 
 export const sourceFrameSchema = z.strictObject({
   /** Path relative to the manifest directory. */
@@ -49,6 +51,10 @@ export const sourceItemSchema = z.strictObject({
   displayName: z.string().min(1),
   /** Texture filtering class: HD cutout art = linear, true pixel art = nearest. */
   filter: z.enum(['linear', 'nearest']),
+  /** Packing bundle: items always used together share pages (default: the item alone). */
+  atlasGroup: idSchema.optional(),
+  /** Mip levels the layout must keep bleed-free (default: 3 for linear, 0 for nearest). */
+  mipLevels: z.number().int().min(0).max(5).optional(),
   parts: z.array(sourcePartSchema).min(1),
 });
 export type SourceItem = z.infer<typeof sourceItemSchema>;
@@ -125,6 +131,16 @@ export function parseSourceManifest(json: unknown): ParseResult<SourceManifest> 
         } else if (frame.sockets) err('frame.sockets', fp, 'only socket-driver frames may define sockets');
       }
     });
+  });
+  const groups = new Map<string, { filter: string; mipLevels: number; item: string }>();
+  m.items.forEach((item, ii) => {
+    const group = item.atlasGroup ?? item.id;
+    const mip = item.mipLevels ?? (item.filter === 'linear' ? DEFAULT_LINEAR_MIP_LEVELS : 0);
+    const prev = groups.get(group);
+    if (!prev) groups.set(group, { filter: item.filter, mipLevels: mip, item: item.id });
+    else if (prev.filter !== item.filter || prev.mipLevels !== mip) {
+      err('item.atlas-group', `/items/${ii}/atlasGroup`, `group "${group}" mixes filter/mip settings with item "${prev.item}"`);
+    }
   });
   for (const [alias, target] of Object.entries(m.aliases)) {
     if (ids.has(alias)) err('alias.shadow', `/aliases/${alias}`, 'alias shadows an item id');

@@ -111,7 +111,19 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
   };
   root.append(
     section('Layers (all characters)', el('div', { class: 'chips' }, layerBoxes)),
-    section('Debug overlay', el('div', { class: 'chips' }, [dbg('pivots', 'foot pivots'), dbg('sockets', 'hero sockets'), dbg('layerBoxes', 'hero layer boxes + order'), dbg('ranks', 'painter rank')])),
+    section(
+      'Debug overlay',
+      el('div', { class: 'chips' }, [dbg('pivots', 'foot pivots'), dbg('sockets', 'hero sockets'), dbg('layerBoxes', 'hero layer boxes + order'), dbg('ranks', 'painter rank')]),
+      el('div', { class: 'row' }, [
+        el('button', {
+          'data-testid': 'lose-context',
+          onclick: () => {
+            if (!app.loseContext()) return;
+            window.setTimeout(() => app.restoreContext(), 1000);
+          },
+        }, ['simulate GPU context loss (1 s)']),
+      ]),
+    ),
   );
 
   // ---------- stats
@@ -127,7 +139,13 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
     const scale = Math.min(1, 280 / page.width);
     const canvas = el('canvas', { width: Math.round(page.width * scale), height: Math.round(page.height * scale) });
     const state = el('span', { class: 'state' });
-    pageList.append(el('div', { class: 'page' }, [el('div', {}, [el('b', {}, [page.owner]), ` ${page.width}×${page.height} · ${(page.fileBytes / 1024).toFixed(1)} KiB png · `, state]), canvas]));
+    pageList.append(
+      el('div', { class: 'page' }, [
+        el('div', {}, [el('b', {}, [page.group]), ` ${page.width}×${page.height} · mip ${page.mipLevels} · ${(page.fileBytes / 1024).toFixed(1)} KiB png · `, state]),
+        el('div', { class: 'muted small' }, [`items: ${page.items.join(', ')}`]),
+        canvas,
+      ]),
+    );
     thumbs.set(page.id, { canvas, state, drawn: false });
   }
 
@@ -140,21 +158,30 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
     ),
   );
 
+  let statuses = new Map<string, ReturnType<UvceApp['registry']['pageStatuses']>[number]>();
   const drawPage = (pageId: string, highlight: Set<string>): void => {
     const t = thumbs.get(pageId);
-    const tex = app.registry.getPage(pageId);
+    const handle = app.registry.handleFor(pageId);
+    const tex = handle ? app.registry.resolve(handle) : null;
     if (!t) return;
-    t.state.textContent = app.registry.pageState(pageId);
+    const status = statuses.get(pageId);
+    t.state.textContent = `${app.registry.pageState(pageId)}${status ? ` · refs ${status.refs} · fetched ${status.fetches}× · evicted ${status.evictions}×` : ''}`;
     t.state.className = `state ${app.registry.pageState(pageId).toLowerCase()}`;
     const ctx = t.canvas.getContext('2d');
-    if (!ctx || !tex) return;
+    if (!ctx) return;
     const page = index.pages.get(pageId);
     if (!page) return;
     const s = t.canvas.width / page.width;
     ctx.clearRect(0, 0, t.canvas.width, t.canvas.height);
     ctx.fillStyle = '#20242c';
     ctx.fillRect(0, 0, t.canvas.width, t.canvas.height);
+    if (!tex) return;
+    // Pages are decoded flipped (texture convention): flip back for display.
+    ctx.save();
+    ctx.translate(0, t.canvas.height);
+    ctx.scale(1, -1);
     ctx.drawImage(tex.image as CanvasImageSource, 0, 0, t.canvas.width, t.canvas.height);
+    ctx.restore();
     for (const [key, r] of Object.entries(index.manifest.images)) {
       if (r.page !== pageId) continue;
       const hot = highlight.has(key);
@@ -180,8 +207,10 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
         `CPU total    p50 ${fmt(snap.totalCpu.p50)} p95 ${fmt(snap.totalCpu.p95)} p99 ${fmt(snap.totalCpu.p99)} ms`,
         `rAF interval p50 ${fmt(snap.frameInterval.p50, 1)} p95 ${fmt(snap.frameInterval.p95, 1)} ms`,
         `GPU timer ${snap.gpuMs === null ? 'n/a' : `${fmt(snap.gpuMs)} ms (${app.env.glRenderer.includes('SwiftShader') ? 'SOFTWARE rasterizer' : 'device'})`}`,
-        `pages resident ${reg.resident}/${reg.pages}, loads ${reg.loads}, shared requests ${reg.sharedRequests}, failed ${reg.failed}`,
-        `source RGBA8 estimate ${(reg.residentBytesRGBA8 / 1048576).toFixed(2)} MiB (owner-calculated, not measured VRAM)`,
+        `pages resident ${reg.byState.RESIDENT}/${reg.pages}, loading ${reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.UPLOAD_QUEUED}, failed ${reg.byState.FAILED}, evicted ${reg.byState.EVICTED}`,
+        `fetches ${reg.fetches} (reloads ${reg.reloads}, retries ${reg.retries}, cancelled ${reg.cancelled}), uploads ${reg.uploads}, evictions ${reg.evictions}`,
+        `GPU source ${(reg.residentBytes / 1048576).toFixed(2)} / budget ${(reg.budgetBytes / 1048576).toFixed(0)} MiB, pinned ${(reg.pinnedBytes / 1048576).toFixed(2)} MiB${reg.overBudget ? ' (OVER BUDGET: pinned set too large)' : ''} (estimates, not measured VRAM)`,
+        `stale handle hits ${reg.staleResolves}, stale bindings ${c.staleBindings}, context losses ${reg.contextLosses}${app.contextLost ? ' (CONTEXT LOST)' : ''}`,
         `sim ${(snap.simTimeMs / 1000).toFixed(2)} s ${app.paused ? '(paused)' : ''}`,
       ].join('\n');
       const hero = app.characters.debugInfo(HERO_ID);
@@ -190,6 +219,7 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
       const now = performance.now();
       if (now - lastPages > 450) {
         lastPages = now;
+        statuses = new Map(app.registry.pageStatuses().map((st) => [st.pageId, st]));
         for (const id of thumbs.keys()) drawPage(id, highlight);
       }
       refreshCountButtons();

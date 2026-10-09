@@ -23,6 +23,8 @@ export interface AppParams {
   overlay: boolean;
   slots: Record<string, string | null>;
   bench: boolean;
+  /** Source page GPU budget in MiB (registry eviction threshold). */
+  budgetMiB: number;
 }
 
 export function parseParams(search: string): AppParams {
@@ -59,5 +61,6 @@ export function parseParams(search: string): AppParams {
     overlay: q.get('overlay') !== '0',
     slots,
     bench: q.get('bench') === '1',
+    budgetMiB: Math.max(1, num('budgetMiB', 256)),
   };
 }

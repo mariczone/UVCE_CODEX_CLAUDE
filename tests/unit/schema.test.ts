@@ -88,6 +88,13 @@ describe('compiled manifest validation', () => {
     expect(key).toMatch(/^img-/);
   });
 
+  it('rejects image regions that break the page mip alignment', async () => {
+    const m = await manifestJson();
+    const region = Object.values(m.images)[0] as { x: number };
+    region.x += 1;
+    expect(codes(m)).toContain('image.mip-align');
+  });
+
   it('rejects trim rectangles outside the canonical canvas', async () => {
     const m = await manifestJson();
     const f = m.items.find((i) => i.id === 'hat_02')?.parts[0]?.static?.E;

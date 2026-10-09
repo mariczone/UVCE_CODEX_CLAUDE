@@ -44,6 +44,8 @@ export interface CharacterRenderMetrics {
   pendingDownloads: number;
   cacheHitRatio: number | null;
   cacheEvictions: number;
+  /** Visible layers caught holding a texture their residency handle no longer resolves to (must be 0). */
+  staleBindings: number;
 }
 
 /**

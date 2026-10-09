@@ -100,7 +100,7 @@ export async function generateFixtures(options: GenerateOptions): Promise<Genera
       }
       parts.push(part);
     }
-    items.push({ id: spec.id, version: '1', slot: spec.slot, rigProfileId: rig.id, displayName: spec.displayName, filter: 'linear', parts });
+    items.push({ id: spec.id, version: '1', slot: spec.slot, rigProfileId: rig.id, displayName: spec.displayName, filter: 'linear', ...(spec.atlasGroup ? { atlasGroup: spec.atlasGroup } : {}), parts });
   }
   const manifest: SourceManifest = {
     schemaVersion: SOURCE_MANIFEST_SCHEMA,

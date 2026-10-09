@@ -5,8 +5,8 @@
  */
 export class GpuTimer {
   private readonly gl: WebGL2RenderingContext;
-  private readonly ext: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null;
-  private readonly pending: WebGLQuery[] = [];
+  private ext: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null;
+  private pending: WebGLQuery[] = [];
   private active: WebGLQuery | null = null;
   lastMs: number | null = null;
   /** Called once per resolved query (not per frame): no duplicated samples. */
@@ -15,6 +15,14 @@ export class GpuTimer {
   constructor(gl: WebGL2RenderingContext) {
     this.gl = gl;
     this.ext = gl.getExtension('EXT_disjoint_timer_query_webgl2') as { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null;
+  }
+
+  /** After context loss/restore: queries of the old context are gone and the extension must be re-fetched. */
+  reset(): void {
+    this.pending = [];
+    this.active = null;
+    this.lastMs = null;
+    this.ext = this.gl.isContextLost() ? null : (this.gl.getExtension('EXT_disjoint_timer_query_webgl2') as typeof this.ext);
   }
 
   get supported(): boolean {

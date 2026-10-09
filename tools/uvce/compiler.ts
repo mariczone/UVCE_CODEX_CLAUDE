@@ -1,11 +1,11 @@
 /**
- * UVCE asset compiler v1 (Milestone 0 scope): validate -> trim -> content-hash -> dedupe -> per-item shelf
- * pack -> compiled manifest. Deterministic: same source pixels/metadata => identical manifest and pages.
- * Not yet (Milestone 2): cross-item shared atlases, mip-safe extrusion, KTX2, bundles, streaming.
+ * UVCE asset compiler v2 (Milestone 2): validate -> trim -> content-hash -> global dedupe -> shelf pack per atlas
+ * group (co-use bundle) with a mip-safe aligned layout -> compiled manifest v2. Deterministic: same source
+ * pixels/metadata => identical manifest and pages. Not yet: KTX2, usage-statistics-driven grouping.
  */
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { type RgbaImage, createImage, cropImage, opaqueBounds } from '../../src/uvce/compositor/rgba.ts';
 import type { Direction8 } from '../../src/uvce/core/directions.ts';
 import type { Rect } from '../../src/uvce/core/geometry.ts';
@@ -23,9 +23,9 @@ import {
   parseCompiledManifest,
 } from '../../src/uvce/schema/compiled-manifest.ts';
 import { decodePng, encodePng } from './png.ts';
-import { type SourceFrame, type SourceManifest, parseSourceManifest } from './source-schema.ts';
+import { DEFAULT_LINEAR_MIP_LEVELS, type SourceFrame, type SourceItem, type SourceManifest, parseSourceManifest } from './source-schema.ts';
 
-export const COMPILER_VERSION = 'uvce-compiler/0.1.0';
+export const COMPILER_VERSION = 'uvce-compiler/0.2.0';
 export const DEFAULT_COMPILED_DIR = 'public/uvce-compiled';
 /** Transparent gutter between packed images and at page borders (>= 1 needed for bilinear edges). */
 export const PAGE_PADDING = 2;
@@ -107,45 +107,55 @@ interface Placement {
   y: number;
 }
 
-/** Deterministic shelf packer: sort by height, width, key; fill rows; open a new page when full. */
+const alignUp = (v: number, a: number): number => Math.ceil(v / a) * a;
+
+/**
+ * Deterministic shelf packer: sort by height, width, key; fill rows; open a new page when full.
+ * `align` = 2^mipLevels: every image starts on an `align` boundary and is separated from its neighbours (and the
+ * page border) by at least one fully transparent `align`-sized block, so mip levels <= mipLevels never mix images
+ * and bilinear taps at those levels only reach transparent texels. With align = 1 the gap is `padding` pixels.
+ */
 export function packShelves(
   images: readonly { key: string; w: number; h: number }[],
   maxSize: number,
   padding: number,
+  align = 1,
 ): { placements: Placement[]; pages: { width: number; height: number }[] } {
+  const gap = Math.max(padding, align);
   const sorted = [...images].sort((a, b) => b.h - a.h || b.w - a.w || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-  const area = sorted.reduce((sum, i) => sum + (i.w + padding) * (i.h + padding), 0);
-  const widest = sorted.reduce((m, i) => Math.max(m, i.w + 2 * padding), 0);
-  if (widest > maxSize || sorted.some((i) => i.h + 2 * padding > maxSize)) throw new RangeError(`image larger than max page size ${maxSize}`);
+  const area = sorted.reduce((sum, i) => sum + alignUp(i.w + gap, align) * alignUp(i.h + gap, align), 0);
+  const widest = sorted.reduce((m, i) => Math.max(m, alignUp(gap, align) + i.w + gap), 0);
+  if (widest > maxSize || sorted.some((i) => alignUp(gap, align) + i.h + gap > maxSize)) throw new RangeError(`image larger than max page size ${maxSize}`);
   let width = 64;
   while (width < Math.min(maxSize, Math.max(widest, Math.ceil(Math.sqrt(area * 1.15))))) width *= 2;
   width = Math.min(width, maxSize); // non-power-of-two limits must not be overshot
+  const start = alignUp(gap, align);
   const placements: Placement[] = [];
   const pages: { width: number; height: number }[] = [];
   let page = 0;
-  let x = padding;
-  let y = padding;
+  let x = start;
+  let y = start;
   let shelf = 0;
   let used = 0;
   const closePage = (): void => {
-    pages.push({ width, height: Math.min(maxSize, Math.ceil((used + padding) / 4) * 4) });
+    pages.push({ width, height: Math.min(maxSize, alignUp(used + gap, Math.max(4, align))) });
   };
   for (const img of sorted) {
-    if (x + img.w + padding > width) {
-      x = padding;
-      y += shelf + padding;
+    if (x + img.w + gap > width) {
+      x = start;
+      y = alignUp(y + shelf + gap, align);
       shelf = 0;
     }
-    if (y + img.h + padding > maxSize) {
+    if (y + img.h + gap > maxSize) {
       closePage();
       page++;
-      x = padding;
-      y = padding;
+      x = start;
+      y = start;
       shelf = 0;
       used = 0;
     }
     placements.push({ key: img.key, page, x, y });
-    x += img.w + padding;
+    x = alignUp(x + img.w + gap, align);
     shelf = Math.max(shelf, img.h);
     used = Math.max(used, y + img.h);
   }
@@ -153,12 +163,24 @@ export function packShelves(
   return { placements, pages };
 }
 
+/** Bytes of an RGBA8 texture with a full mip chain down to 1x1 (what texStorage2D allocates with mipmaps on). */
+export function textureBytes(width: number, height: number, mipmapped: boolean): number {
+  if (!mipmapped) return width * height * 4;
+  let total = 0;
+  for (let w = width, h = height; ; w = Math.max(1, w >> 1), h = Math.max(1, h >> 1)) {
+    total += w * h * 4;
+    if (w === 1 && h === 1) break;
+  }
+  return total;
+}
+
 export interface BuildReport {
   compilerVersion: string;
   manifestVersion: string;
-  items: { id: string; frames: number; uniqueImages: number; pages: number; pageBytesRGBA8: number; pageFileBytes: number }[];
-  /** Same pixels used by different items (candidates for Milestone 2 cross-item shared atlases). */
-  crossItemDuplicates: { key: string; items: string[] }[];
+  groups: { group: string; items: string[]; pages: number; mipLevels: number; pageBytesRGBA8: number; pageBytesWithMips: number; pageFileBytes: number }[];
+  items: { id: string; group: string; frames: number; uniqueImages: number; pages: string[] }[];
+  /** Images used by items of more than one atlas group: stored once, in the first group's page. */
+  crossGroupShared: { key: string; items: string[]; page: string }[];
   warnings: Issue[];
   stats: CompiledManifest['stats'];
 }
@@ -168,6 +190,15 @@ export interface BuildOptions {
   outDir: string;
   maxPageSize?: number;
   padding?: number;
+}
+
+interface ItemBuild {
+  item: SourceItem;
+  parts: CompiledPart[];
+  keys: string[];
+  frames: number;
+  group: string;
+  mipLevels: number;
 }
 
 export async function buildAssets(options: BuildOptions): Promise<{ manifest: CompiledManifest; report: BuildReport }> {
@@ -182,33 +213,30 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
   const rigs = new Map(source.rigs.map((r) => [r.id, r]));
 
   await rm(outDir, { recursive: true, force: true });
-  await mkdir(join(outDir, 'pages'), { recursive: true });
 
-  const pages: CompiledPage[] = [];
-  const images: Record<string, ImageRegion> = {};
-  const items: CompiledItem[] = [];
-  const reportItems: BuildReport['items'] = [];
-  const keyOwners = new Map<string, Set<string>>();
+  // Phase 1: validate, trim and hash every frame of every item (global content dedupe by key).
+  const allImages = new Map<string, ValidatedImage>();
+  const keyItems = new Map<string, Set<string>>();
+  const builds: ItemBuild[] = [];
   let sourceFrames = 0;
-  let uniqueImages = 0;
-
   for (const item of source.items) {
     const rig = rigs.get(item.rigProfileId) as RigProfile;
-    const unique = new Map<string, ValidatedImage>();
-    let itemFrames = 0;
+    const keys: string[] = [];
+    let frames = 0;
     const compileFrame = async (frame: SourceFrame, attach: string, path: string): Promise<CompiledFrame | null> => {
       sourceFrames++;
-      itemFrames++;
+      frames++;
       const v = validateSourcePng(await readFile(join(sourceDir, frame.file)), rig, `${path} (${frame.file})`, issues);
       if (!v) return null;
-      const prev = unique.get(v.key);
+      const prev = allImages.get(v.key);
       if (prev && Buffer.compare(Buffer.from(prev.image.data), Buffer.from(v.image.data)) !== 0) {
         throw new Error(`content key collision for ${v.key}`); // 96-bit prefix: practically impossible
       }
-      if (!prev) unique.set(v.key, v);
-      const owners = keyOwners.get(v.key) ?? new Set<string>();
+      if (!prev) allImages.set(v.key, v);
+      if (!keys.includes(v.key)) keys.push(v.key);
+      const owners = keyItems.get(v.key) ?? new Set<string>();
       owners.add(item.id);
-      keyOwners.set(v.key, owners);
+      keyItems.set(v.key, owners);
       const anchor = attach === ROOT_SOCKET ? rig.footPivot : frame.anchor;
       if (!anchor) return null; // already reported by source validation
       const out: CompiledFrame = { image: v.key, trim: v.trim, anchor: { ...anchor } };
@@ -222,16 +250,16 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
       if (part.clips) {
         const clips: NonNullable<CompiledPart['clips']> = {};
         for (const [clipId, byDir] of Object.entries(part.clips)) {
-          const outDir: Partial<Record<Direction8, CompiledFrame[]>> = {};
-          for (const [dir, frames] of Object.entries(byDir) as [Direction8, SourceFrame[]][]) {
+          const outByDir: Partial<Record<Direction8, CompiledFrame[]>> = {};
+          for (const [dir, frameList] of Object.entries(byDir) as [Direction8, SourceFrame[]][]) {
             const list: CompiledFrame[] = [];
-            for (const [fi, f] of frames.entries()) {
+            for (const [fi, f] of frameList.entries()) {
               const c = await compileFrame(f, part.attach, `${base}/clips/${clipId}/${dir}/${fi}`);
               if (c) list.push(c);
             }
-            outDir[dir] = list;
+            outByDir[dir] = list;
           }
-          clips[clipId] = outDir;
+          clips[clipId] = outByDir;
         }
         compiled.clips = clips;
       }
@@ -245,53 +273,87 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
       }
       parts.push(compiled);
     }
-    if (hasErrors(issues)) continue; // keep validating other items; abort before writing a manifest
+    builds.push({ item, parts, keys, frames, group: item.atlasGroup ?? item.id, mipLevels: item.mipLevels ?? (item.filter === 'linear' ? DEFAULT_LINEAR_MIP_LEVELS : 0) });
+  }
+  if (hasErrors(issues)) throw new BuildError('asset validation failed', issues.filter((i) => i.severity === 'error'));
 
-    const packed = packShelves([...unique.values()].map((v) => ({ key: v.key, w: v.trim.w, h: v.trim.h })), maxPageSize, padding);
-    const pageImages = packed.pages.map((p) => createImage(p.width, p.height));
+  // Phase 2: pack per atlas group (sorted for determinism). An image already placed by an earlier group is
+  // referenced, not duplicated.
+  await mkdir(join(outDir, 'pages'), { recursive: true });
+  const groups = new Map<string, ItemBuild[]>();
+  for (const b of builds) groups.set(b.group, [...(groups.get(b.group) ?? []), b]);
+  const pages: CompiledPage[] = [];
+  const images: Record<string, ImageRegion> = {};
+  const placedIn = new Map<string, string>(); // image key -> page id
+  const reportGroups: BuildReport['groups'] = [];
+  for (const [group, members] of [...groups.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    const first = members[0] as ItemBuild;
+    const keys = [...new Set(members.flatMap((m) => m.keys))].filter((k) => !placedIn.has(k));
+    if (keys.length === 0) continue;
+    const align = 2 ** first.mipLevels;
+    const packed = packShelves(keys.map((k) => ({ key: k, w: (allImages.get(k) as ValidatedImage).trim.w, h: (allImages.get(k) as ValidatedImage).trim.h })), maxPageSize, padding, align);
+    const pageImages = packed.pages.map((pg) => createImage(pg.width, pg.height));
     for (const pl of packed.placements) {
-      const v = unique.get(pl.key) as ValidatedImage;
+      const v = allImages.get(pl.key) as ValidatedImage;
       const page = pageImages[pl.page] as RgbaImage;
       for (let row = 0; row < v.image.height; row++) {
         page.data.set(v.image.data.subarray(row * v.image.width * 4, (row + 1) * v.image.width * 4), ((pl.y + row) * page.width + pl.x) * 4);
       }
     }
     const pageIds: string[] = [];
-    let pageBytesRGBA8 = 0;
-    let pageFileBytes = 0;
     for (const [index, pageImage] of pageImages.entries()) {
       const contentHash = imageContentHash(pageImage);
-      const id = `page-${item.id}-${index}`;
-      const file = `pages/${item.id}-${index}-${contentHash.slice(0, 12)}.png`;
+      const id = `page-${group}-${index}`;
+      const file = `pages/${group}-${index}-${contentHash.slice(0, 12)}.png`;
       const png = encodePng(pageImage);
       await writeFile(join(outDir, file), png);
-      pages.push({ id, file, width: pageImage.width, height: pageImage.height, filter: item.filter, alpha: 'straight', colorSpace: 'srgb', contentHash, fileBytes: png.byteLength, owner: item.id });
+      pages.push({ id, file, width: pageImage.width, height: pageImage.height, filter: first.item.filter, alpha: 'straight', colorSpace: 'srgb', contentHash, fileBytes: png.byteLength, group, items: [], mipLevels: first.mipLevels });
       pageIds.push(id);
-      pageBytesRGBA8 += pageImage.width * pageImage.height * 4;
-      pageFileBytes += png.byteLength;
     }
     for (const pl of packed.placements) {
-      const v = unique.get(pl.key) as ValidatedImage;
-      images[pl.key] = { page: pageIds[pl.page] as string, x: pl.x, y: pl.y, w: v.trim.w, h: v.trim.h };
+      const v = allImages.get(pl.key) as ValidatedImage;
+      const pageId = pageIds[pl.page] as string;
+      images[pl.key] = { page: pageId, x: pl.x, y: pl.y, w: v.trim.w, h: v.trim.h };
+      placedIn.set(pl.key, pageId);
     }
-    uniqueImages += unique.size;
-    // Content hash covers logical content only (pixels via image keys + metadata), never atlas placement.
-    const contentHash = sha256Hex(canonicalJson({ id: item.id, version: item.version, slot: item.slot, rigProfileId: item.rigProfileId, filter: item.filter, parts }));
-    items.push({ id: item.id, version: item.version, contentHash, slot: item.slot, rigProfileId: item.rigProfileId, displayName: item.displayName, pages: pageIds, parts });
-    reportItems.push({ id: item.id, frames: itemFrames, uniqueImages: unique.size, pages: pageIds.length, pageBytesRGBA8, pageFileBytes });
-  }
-  if (hasErrors(issues)) {
-    await rm(outDir, { recursive: true, force: true });
-    throw new BuildError('asset validation failed', issues.filter((i) => i.severity === 'error'));
+    const groupPages = pages.filter((pg) => pg.group === group);
+    reportGroups.push({
+      group,
+      items: members.map((m) => m.item.id),
+      pages: groupPages.length,
+      mipLevels: first.mipLevels,
+      pageBytesRGBA8: groupPages.reduce((acc, pg) => acc + textureBytes(pg.width, pg.height, false), 0),
+      pageBytesWithMips: groupPages.reduce((acc, pg) => acc + textureBytes(pg.width, pg.height, pg.mipLevels > 0), 0),
+      pageFileBytes: groupPages.reduce((acc, pg) => acc + pg.fileBytes, 0),
+    });
   }
 
+  // Phase 3: items reference every page holding one of their images.
+  const items: CompiledItem[] = [];
+  const reportItems: BuildReport['items'] = [];
+  const pageById = new Map(pages.map((pg) => [pg.id, pg]));
+  for (const b of builds) {
+    const itemPages = [...new Set(b.keys.map((k) => placedIn.get(k) as string))].sort();
+    for (const pid of itemPages) (pageById.get(pid) as CompiledPage).items.push(b.item.id);
+    // Content hash covers logical content only (pixels via image keys + metadata), never atlas placement/grouping.
+    const contentHash = sha256Hex(canonicalJson({ id: b.item.id, version: b.item.version, slot: b.item.slot, rigProfileId: b.item.rigProfileId, filter: b.item.filter, parts: b.parts }));
+    items.push({ id: b.item.id, version: b.item.version, contentHash, slot: b.item.slot, rigProfileId: b.item.rigProfileId, displayName: b.item.displayName, atlasGroup: b.group, pages: itemPages, parts: b.parts });
+    reportItems.push({ id: b.item.id, group: b.group, frames: b.frames, uniqueImages: b.keys.length, pages: itemPages });
+  }
+  for (const pg of pages) pg.items.sort();
+
+  const crossGroupShared = [...keyItems.entries()]
+    .filter(([, owners]) => new Set([...owners].map((o) => builds.find((b) => b.item.id === o)?.group)).size > 1)
+    .map(([key, owners]) => ({ key, items: [...owners].sort(), page: placedIn.get(key) as string }));
   const stats: CompiledManifest['stats'] = {
     sourceFrames,
-    uniqueImages,
-    dedupedFrames: sourceFrames - uniqueImages,
+    uniqueImages: allImages.size,
+    dedupedFrames: sourceFrames - allImages.size,
     pageCount: pages.length,
-    pageBytesRGBA8: pages.reduce((s, p) => s + p.width * p.height * 4, 0),
-    pageFileBytes: pages.reduce((s, p) => s + p.fileBytes, 0),
+    pageBytesRGBA8: pages.reduce((acc, pg) => acc + textureBytes(pg.width, pg.height, false), 0),
+    pageBytesWithMips: pages.reduce((acc, pg) => acc + textureBytes(pg.width, pg.height, pg.mipLevels > 0), 0),
+    pageFileBytes: pages.reduce((acc, pg) => acc + pg.fileBytes, 0),
+    crossGroupSharedImages: crossGroupShared.length,
   };
   const sortedImages = Object.fromEntries(Object.entries(images).sort(([a], [b]) => (a < b ? -1 : 1)));
   const body: Omit<CompiledManifest, 'manifestVersion'> = {
@@ -309,17 +371,15 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
   const manifest: CompiledManifest = { ...body, manifestVersion: `m-${sha256Hex(canonicalJson(body)).slice(0, 16)}` };
   const check = parseCompiledManifest(manifest);
   if (!check.ok) throw new BuildError('compiler produced an invalid manifest (bug)', check.issues);
-
-  const crossItemDuplicates = [...keyOwners.entries()].filter(([, o]) => o.size > 1).map(([key, o]) => ({ key, items: [...o].sort() }));
   const report: BuildReport = {
     compilerVersion: COMPILER_VERSION,
     manifestVersion: manifest.manifestVersion,
+    groups: reportGroups,
     items: reportItems,
-    crossItemDuplicates,
+    crossGroupShared,
     warnings: issues.filter((i) => i.severity === 'warning'),
     stats,
   };
-  await mkdir(dirname(join(outDir, 'manifest.json')), { recursive: true });
   await writeFile(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   await writeFile(join(outDir, 'build-report.json'), `${JSON.stringify(report, null, 2)}\n`);
   return { manifest, report };

@@ -12,7 +12,7 @@ import { appearanceKey } from '../../core/cache-keys.ts';
 import { type Direction8, type ViewerPose, spriteDirection, viewYawForCharacter } from '../../core/directions.ts';
 import type { Issue } from '../../core/issues.ts';
 import { type ResolvedPose, resolvePose } from '../../core/pose.ts';
-import type { SourceAssetRegistry } from '../../assets/source-registry.ts';
+import type { PageHandle, ResidencyView } from '../../assets/source-registry.ts';
 import type { AppearanceDefinition } from '../../schema/appearance.ts';
 import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
@@ -20,7 +20,7 @@ import { createMissingTexture, createSpriteLayerMaterial, createUnitQuadGeometry
 
 export interface LayeredRendererOptions {
   index: ManifestIndex;
-  registry: SourceAssetRegistry<THREE.Texture>;
+  registry: ResidencyView<THREE.Texture>;
   scene: THREE.Scene;
   camera: THREE.Camera;
   /** World units the sprite depth is pulled toward the camera (feet vs ground). */
@@ -32,6 +32,9 @@ export interface LayeredRendererOptions {
 
 interface LayerMesh {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  /** Generation-checked residency handle of the bound page (null for the missing-asset placeholder). */
+  handle: PageHandle | null;
+  pageId: string | null;
 }
 
 export interface CharacterDebugInfo {
@@ -62,6 +65,8 @@ interface CharacterRecord {
   seenFrame: number;
   depth: number;
   rank: number;
+  /** Items pinned in the registry because this character is visible. */
+  pinned: string[];
 }
 
 const SHADOW_RADIUS = 0.36;
@@ -89,7 +94,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   readonly root = new THREE.Group();
   readonly shadowRoot = new THREE.Group();
   private readonly index: ManifestIndex;
-  private readonly registry: SourceAssetRegistry<THREE.Texture>;
+  private readonly registry: ResidencyView<THREE.Texture>;
   private camera: THREE.Camera;
   private readonly depthBias: number;
   private readonly margin: number;
@@ -149,6 +154,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       pendingDownloads: 0,
       cacheHitRatio: null,
       cacheEvictions: 0,
+      staleBindings: 0,
     };
   }
 
@@ -195,7 +201,6 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     const r = resolveAppearance(this.index, appearance);
     const entry = r.ok ? { resolved: r.value, key: appearanceKey(r.value), issues: r.value.issues } : { resolved: null, key: 'unresolvable', issues: r.issues };
     this.resolvedCache.set(appearance, entry);
-    if (entry.resolved) for (const s of entry.resolved.slots) void this.registry.ensureItem(s.item.id);
     return entry;
   }
 
@@ -224,12 +229,21 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       seenFrame: 0,
       depth: 0,
       rank: 0,
+      pinned: [],
     };
     this.records.set(entityId, rec);
     return rec;
   }
 
+  /** Pins exactly `items` for this character (visible), releasing what is no longer needed. */
+  private pin(rec: CharacterRecord, items: readonly string[]): void {
+    for (const id of rec.pinned) if (!items.includes(id)) this.registry.releaseItem(id);
+    for (const id of items) if (!rec.pinned.includes(id)) this.registry.acquireItem(id);
+    rec.pinned = [...items];
+  }
+
   private destroyRecord(rec: CharacterRecord): void {
+    this.pin(rec, []);
     for (const l of rec.layers) l.mesh.material.dispose();
     this.root.remove(rec.group);
     if (rec.shadow) this.shadowRoot.remove(rec.shadow);
@@ -243,13 +257,13 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       mesh.frustumCulled = false; // the quad is expanded in the shader; culling is per character
       mesh.matrixAutoUpdate = false;
       rec.group.add(mesh);
-      lm = { mesh };
+      lm = { mesh, handle: null, pageId: null };
       rec.layers[i] = lm;
     }
     return lm;
   }
 
-  private applyPose(rec: CharacterRecord, counters: { pending: number; failed: number }): void {
+  private applyPose(rec: CharacterRecord, counters: { pending: number; failed: number; staleBindings: number }): void {
     const pose = rec.pose;
     const rig = rec.resolved?.rig;
     if (!pose || !rig) return;
@@ -258,13 +272,16 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     for (const layer of pose.layers) {
       const page = this.index.pages.get(layer.region.page);
       if (!page) continue;
-      const texture = this.registry.getPage(page.id);
+      const handle = this.registry.handleFor(page.id);
+      const texture = handle ? this.registry.resolve(handle) : null;
       const state = this.registry.pageState(page.id);
       if (!texture && state !== 'FAILED') {
         counters.pending++;
         continue;
       }
       const lm = this.layerMesh(rec, drawn);
+      lm.handle = texture ? handle : null;
+      lm.pageId = page.id;
       const u = lm.mesh.material.uniforms;
       (u.uQuad?.value as THREE.Vector4).set(layer.dest.x - rig.footPivot.x - m, layer.dest.y - rig.footPivot.y - m, layer.dest.w + 2 * m, layer.dest.h + 2 * m);
       if (texture) {
@@ -304,7 +321,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       orthographic: (camera as THREE.OrthographicCamera).isOrthographicCamera === true,
     };
     const visible: CharacterRecord[] = [];
-    const counters = { pending: 0, failed: 0 };
+    const counters = { pending: 0, failed: 0, staleBindings: 0 };
     let poseUpdates = 0;
     let culled = 0;
     const appearances = new Set<string>();
@@ -323,16 +340,22 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         rec.group.visible = false;
         if (rec.shadow) rec.shadow.visible = false;
       };
+      const items = rec.resolved ? rec.resolved.slots.map((s) => s.item.id) : [];
       if (!c.visible || !rec.resolved) {
+        this.pin(rec, []);
         hide();
         continue;
       }
       this.sphere.center.set(c.position.x, c.position.y + 0.9, c.position.z);
       if (!this.frustum.intersectsSphere(this.sphere)) {
+        // Off screen: unpin (evictable) but keep warm with a low-priority prefetch.
+        this.pin(rec, []);
+        for (const id of items) this.registry.prefetchItem(id);
         culled++;
         hide();
         continue;
       }
+      this.pin(rec, items);
       const direction = spriteDirection(c.facingYaw, viewYawForCharacter(viewer, c.position));
       const clip = this.index.clips.get(c.animation.clipId);
       const frameIndex = clip ? sampleClip(clip, clipTimeAt(c.animation, nowMs)).frameIndex : 0;
@@ -350,6 +373,16 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
           if (st === 'FAILED') counters.failed++;
           else if (st !== 'RESIDENT') counters.pending++;
         }
+      }
+      // Generation audit: a visible layer may only draw the texture its handle currently resolves to.
+      for (const l of rec.layers) {
+        if (!l.mesh.visible || !l.handle || !l.pageId) continue;
+        const current = this.registry.resolve(l.handle);
+        if (current === null || current !== l.mesh.material.uniforms.uMap?.value) {
+          l.mesh.visible = false;
+          rec.poseKey = '';
+          counters.staleBindings++;
+        } else this.registry.touch(l.pageId);
       }
       rec.group.position.set(c.position.x, c.position.y, c.position.z);
       rec.group.visible = true;
@@ -398,8 +431,10 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       uniqueVisibleAppearances: appearances.size,
       poseUpdates,
       prepareCpuMs: performance.now() - t0,
-      sourceEstimatedBytes: reg.residentBytesRGBA8,
-      pendingDownloads: reg.fetching,
+      staleBindings: counters.staleBindings,
+      sourceEstimatedBytes: reg.residentBytes,
+      pendingDownloads: reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.RETRY_BACKOFF,
+      cacheEvictions: reg.evictions,
     };
   }
 
@@ -422,6 +457,29 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       visible: rec.group.visible,
       position: rec.group.position.clone(),
     };
+  }
+
+  /**
+   * Test/debug audit: number of visible layer meshes whose bound texture is not the one their handle resolves to
+   * right now (a stale-handle glitch). Must always be 0.
+   */
+  auditBindings(): { visibleLayers: number; violations: number } {
+    let visibleLayers = 0;
+    let violations = 0;
+    for (const rec of this.records.values()) {
+      if (!rec.group.visible) continue;
+      for (const l of rec.layers) {
+        if (!l.mesh.visible) continue;
+        visibleLayers++;
+        const bound = l.mesh.material.uniforms.uMap?.value;
+        if (l.handle === null) {
+          if (bound !== this.missing) violations++;
+          continue;
+        }
+        if (this.registry.resolve(l.handle) !== bound) violations++;
+      }
+    }
+    return { visibleLayers, violations };
   }
 
   /** Visible characters (and registered transparent objects, prefixed "obj:") in painter order, back to front. */

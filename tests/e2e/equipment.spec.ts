@@ -11,7 +11,8 @@ test.describe('runtime equipment swaps', () => {
       if (m?.[1]) fetched.push(m[1]);
     });
     await openApp(page, 'test=1');
-    expect([...fetched].sort()).toEqual(['armor_01', 'body_base', 'hair_01', 'hat_01', 'head_base', 'weapon_01']);
+    // body_base + head_base are always co-used: one 'core' atlas group/page.
+    expect([...fetched].sort()).toEqual(['armor_01', 'core', 'hair_01', 'hat_01', 'weapon_01']);
     const swap = async (slot: string, itemId: string): Promise<string[]> => {
       const before = fetched.length;
       await page.getByTestId(`slot-${slot}`).selectOption(itemId);
@@ -30,7 +31,7 @@ test.describe('runtime equipment swaps', () => {
     // Every page was requested exactly once during the session.
     expect(new Set(fetched).size).toBe(fetched.length);
     const snap = await api(page, (u) => u.snapshot());
-    expect(snap.registry.loads).toBe(fetched.length);
+    expect(snap.registry.fetches).toBe(fetched.length);
   });
 
   test('unequipping removes the layer; runtime layer toggles hide and restore layers', async ({ page }) => {
@@ -64,10 +65,11 @@ test.describe('runtime equipment swaps', () => {
       await api(page, (u) => u.waitForIdle());
     }
     const statuses = await api(page, (u) => u.pageStatuses());
-    expect(statuses.find((s) => s.owner === 'hat_02')?.state).toBe('FAILED');
+    expect(statuses.find((s) => s.group === 'hat_02')?.state).toBe('FAILED');
     const snap = await api(page, (u) => u.snapshot());
     expect(snap.character.failedLayers).toBe(1);
-    expect(snap.registry.failed).toBe(1);
+    expect(snap.registry.byState.FAILED).toBe(1);
+    expect(snap.registry.retries).toBe(0); // HTTP 404 is not transient: no backoff retries
     expect(hits).toBe(1);
   });
 });

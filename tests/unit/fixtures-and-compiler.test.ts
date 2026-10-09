@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -6,7 +6,7 @@ import { createImage, cropImage, opaqueBounds, rectsOverlapWithGap } from './ima
 import { BuildError, buildAssets, imageContentHash, packShelves } from '../../tools/uvce/compiler.ts';
 import { generateFixtures } from '../../tools/uvce/generate-fixtures.ts';
 import { decodePng, encodePng } from '../../tools/uvce/png.ts';
-import { type SourceManifest, sourcePartFrames } from '../../tools/uvce/source-schema.ts';
+import { type SourceManifest, parseSourceManifest, sourcePartFrames } from '../../tools/uvce/source-schema.ts';
 import { compiledAssets, fixtures } from './helpers.ts';
 
 const temp: string[] = [];
@@ -160,6 +160,104 @@ describe('asset compiler', () => {
       const packed = packShelves(imgs, limit, 2);
       expect(packed.pages.every((pg) => pg.width <= limit && pg.height <= limit)).toBe(true);
     }
+  });
+
+  it('groups co-used items into shared pages and lists every item on its pages (compiler v2)', async () => {
+    const { index } = await compiledAssets();
+    const m = index.manifest;
+    const core = m.pages.filter((pg) => pg.group === 'core');
+    expect(core).toHaveLength(1);
+    expect(core[0]?.items).toEqual(['body_base', 'head_base']);
+    expect(index.items.get('body_base')?.pages).toEqual(['page-core-0']);
+    expect(index.items.get('head_base')?.atlasGroup).toBe('core');
+    expect(m.pages).toHaveLength(12);
+    expect(m.stats.pageBytesWithMips).toBeGreaterThan(m.stats.pageBytesRGBA8);
+    expect(m.compilerVersion).toBe('uvce-compiler/0.2.0');
+  });
+
+  it('mip-safe layout: GL box mips never mix two images at levels 1..L and bilinear taps stay in-image', async () => {
+    const { index } = await compiledAssets();
+    for (const page of index.manifest.pages) {
+      expect(page.mipLevels).toBe(3);
+      const regions = Object.values(index.manifest.images).filter((r) => r.page === page.id);
+      let w = page.width;
+      let h = page.height;
+      // 0 = transparent gutter, k > 0 = image k, -1 = a texel mixing two images (forbidden).
+      let owner = new Int32Array(w * h);
+      regions.forEach((r, i) => {
+        for (let y = r.y; y < r.y + r.h; y++) owner.fill(i + 1, y * w + r.x, y * w + r.x + r.w);
+      });
+      for (let level = 1; level <= page.mipLevels; level++) {
+        const nw = Math.max(1, w >> 1);
+        const nh = Math.max(1, h >> 1);
+        const next = new Int32Array(nw * nh);
+        for (let y = 0; y < nh; y++) {
+          for (let x = 0; x < nw; x++) {
+            let o = 0;
+            for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
+              const sx = Math.min(w - 1, 2 * x + dx);
+              const sy = Math.min(h - 1, 2 * y + dy);
+              const c = owner[sy * w + sx] as number;
+              if (c === 0) continue;
+              o = o === 0 || o === c ? c : -1;
+            }
+            next[y * nw + x] = o;
+          }
+        }
+        owner = next;
+        w = nw;
+        h = nh;
+        let mixed = 0;
+        let reach = 0;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const o = owner[y * w + x] as number;
+            if (o < 0) mixed++;
+            if (o <= 0) continue;
+            for (let dy = -1; dy <= 1; dy++)
+              for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                const n = owner[ny * w + nx] as number;
+                if (n !== 0 && n !== o) reach++;
+              }
+          }
+        }
+        expect({ page: page.id, level, mixed, reach }).toEqual({ page: page.id, level, mixed: 0, reach: 0 });
+      }
+    }
+  });
+
+  it('stores an image used by items of different atlas groups once (global dedupe)', async () => {
+    const dir = await tempDir();
+    const src = join(dir, 'src');
+    await cp(fixtures().sourceDir, src, { recursive: true });
+    const manifest = await sourceManifest(src);
+    const hat = manifest.items.find((i) => i.id === 'hat_01');
+    if (!hat) throw new Error('hat_01 missing');
+    manifest.items.push({ ...hat, id: 'hat_01_recolor_pending', atlasGroup: 'zz_shared_test', displayName: 'Same pixels, other group' });
+    await writeFile(join(src, 'source-manifest.json'), JSON.stringify(manifest));
+    const { manifest: out, report } = await buildAssets({ sourceDir: src, outDir: join(dir, 'out') });
+    const original = out.items.find((i) => i.id === 'hat_01');
+    const copy = out.items.find((i) => i.id === 'hat_01_recolor_pending');
+    expect(copy?.pages).toEqual(original?.pages);
+    expect(out.pages).toHaveLength(12); // no page for the duplicate group
+    expect(out.pages.find((pg) => pg.id === 'page-hat_01-0')?.items).toEqual(['hat_01', 'hat_01_recolor_pending']);
+    expect(out.stats.crossGroupSharedImages).toBe(new Set(Object.values(original?.parts[0]?.static ?? {}).map((f) => f.image)).size);
+    expect(report.crossGroupShared.every((c) => c.page === 'page-hat_01-0')).toBe(true);
+    // Item content hashes ignore grouping/placement: identical content => identical hash except for the id.
+    expect(copy?.contentHash).not.toBe(original?.contentHash);
+  });
+
+  it('rejects atlas groups that mix filtering or mip settings', async () => {
+    const manifest = await sourceManifest();
+    const head = manifest.items.find((i) => i.id === 'head_base');
+    if (!head) throw new Error('head_base missing');
+    head.filter = 'nearest';
+    const r = parseSourceManifest(manifest);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.issues.map((i) => i.code)).toContain('item.atlas-group');
   });
 
   it('rejects invalid source art with specific errors and writes no partial output', async () => {

@@ -88,6 +88,13 @@ async function main(): Promise<void> {
       return d ? { direction: d.direction, appearanceKey: d.appearanceKey, rank: d.rank, issues: d.appearanceIssues, layers: d.pose?.layers.map((l) => ({ layer: l.layer, itemId: l.itemId, dest: l.dest, order: l.order })) ?? [] } : null;
     },
     paintOrder: () => app.characters.paintOrder(),
+    auditBindings: () => app.characters.auditBindings(),
+    registryStats: () => app.registry.stats(),
+    loseContext: () => app.loseContext(),
+    restoreContext: () => app.restoreContext(),
+    isContextLost: () => app.contextLost,
+    stormStep: (step: number, changes: number) => app.stormStep(step, changes),
+    tick: () => app.tick(),
     pageStatuses: () => app.registry.pageStatuses(),
     /** Browser-measured transfer of compiled assets (Resource Timing), for benchmarks. */
     assetTransfer: () => {

@@ -19,7 +19,7 @@ import {
   type RigProfile,
 } from './common.ts';
 
-export const COMPILED_MANIFEST_SCHEMA = 'uvce-compiled-manifest-v1';
+export const COMPILED_MANIFEST_SCHEMA = 'uvce-compiled-manifest-v2';
 
 /** Content key of a trimmed RGBA image: "img-" + first 24 hex chars of its SHA-256 pixel hash. */
 export const imageKeySchema = z.string().regex(/^img-[0-9a-f]{24}$/);
@@ -57,6 +57,8 @@ export const compiledItemSchema = z.strictObject({
   slot: idSchema,
   rigProfileId: idSchema,
   displayName: z.string().min(1),
+  /** Packing bundle the item's images were placed in (a packing decision, not part of contentHash). */
+  atlasGroup: idSchema,
   /** Pages that must be resident to draw any frame of this item. */
   pages: z.array(pageIdSchema),
   parts: z.array(compiledPartSchema).min(1),
@@ -75,7 +77,15 @@ export const pageSchema = z.strictObject({
   /** SHA-256 of the page RGBA pixels (not of the PNG bytes). */
   contentHash: sha256Schema,
   fileBytes: z.number().int().positive(),
-  owner: idSchema,
+  /** Atlas group (co-use bundle) this page belongs to. */
+  group: idSchema,
+  /** Items with at least one image on this page. */
+  items: z.array(idSchema).min(1),
+  /**
+   * Images are aligned to 2^mipLevels with a fully transparent 2^mipLevels block between them, so mip levels
+   * 0..mipLevels never mix two images. The runtime must not sample deeper levels (TEXTURE_MAX_LEVEL).
+   */
+  mipLevels: z.number().int().min(0).max(5),
 });
 export type CompiledPage = z.infer<typeof pageSchema>;
 
@@ -113,7 +123,11 @@ export const compiledManifestSchema = z.strictObject({
     dedupedFrames: z.number().int().min(0),
     pageCount: z.number().int().min(0),
     pageBytesRGBA8: z.number().int().min(0),
+    /** RGBA8 estimate including mip chains (what a fully resident set costs on the GPU). */
+    pageBytesWithMips: z.number().int().min(0),
     pageFileBytes: z.number().int().min(0),
+    /** Images shared between items of different atlas groups (stored once). */
+    crossGroupSharedImages: z.number().int().min(0),
   }),
 });
 export type CompiledManifest = z.infer<typeof compiledManifestSchema>;
@@ -161,6 +175,10 @@ export function validateCompiledManifestSemantics(m: CompiledManifest): Issue[] 
     if (region.x + region.w > page.width || region.y + region.h > page.height) {
       err('image.bounds', `/images/${key}`, `region exceeds page ${page.id} (${page.width}x${page.height})`);
     }
+    const align = 2 ** page.mipLevels;
+    if (region.x % align !== 0 || region.y % align !== 0) {
+      err('image.mip-align', `/images/${key}`, `region not aligned to ${align} px required by mipLevels ${page.mipLevels}`);
+    }
   }
   const itemIds = new Set<string>();
   m.items.forEach((item, ii) => {
@@ -174,7 +192,11 @@ export function validateCompiledManifestSemantics(m: CompiledManifest): Issue[] 
     }
     const slot = rig.slots.find((s) => s.name === item.slot);
     if (!slot) err('item.slot', `${ip}/slot`, `slot "${item.slot}" not declared by rig ${rig.id}`);
-    for (const pageId of item.pages) if (!pages.has(pageId)) err('item.page', `${ip}/pages`, `unknown page "${pageId}"`);
+    for (const pageId of item.pages) {
+      const page = pages.get(pageId);
+      if (!page) err('item.page', `${ip}/pages`, `unknown page "${pageId}"`);
+      else if (!page.items.includes(item.id)) err('item.page', `${ip}/pages`, `page "${pageId}" does not list item "${item.id}"`);
+    }
     const layersSeen = new Set<string>();
     item.parts.forEach((part, pi) => {
       const pp = `${ip}/parts/${pi}`;
