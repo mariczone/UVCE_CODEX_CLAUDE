@@ -20,7 +20,8 @@ import type { PageHandle, ResidencyView } from '../../assets/source-registry.ts'
 import type { AppearanceDefinition } from '../../schema/appearance.ts';
 import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
-import { MAX_COMPOSITE_LAYERS, createCompositeMaterial } from './composite-material.ts';
+import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, setCompositeLayers } from './composite-material.ts';
+import { type BakeJob, type CacheCell, CANVAS_SIZE, CELL_OFFSET, type FrameCacheBackend } from './frame-cache.ts';
 import { createMissingTexture, createSpriteLayerMaterial, createUnitQuadGeometry } from './sprite-material.ts';
 
 export interface LayeredRendererOptions {
@@ -33,8 +34,15 @@ export interface LayeredRendererOptions {
   /** Texels of transparent gutter included around each quad (<= compiler padding) for filtering. */
   filterMargin?: number;
   shadows?: boolean;
-  /** LAYERED (default): one quad per layer. SHADER: one composited quad per character, LAYERED fallback per character. */
-  mode?: 'LAYERED' | 'SHADER';
+  /**
+   * LAYERED (default): one quad per layer. SHADER: one composited quad per character. FULL_CACHE: one quad sampling a
+   * baked frame from the frame cache. Each falls back per character/pose: FULL_CACHE -> SHADER -> LAYERED.
+   */
+  mode?: 'LAYERED' | 'SHADER' | 'FULL_CACHE';
+  /** Required for FULL_CACHE (without it FULL_CACHE behaves like SHADER). */
+  frameCache?: FrameCacheBackend | null;
+  /** FULL_CACHE: at most this many frames are baked per frame (bounds bake hitches); the rest fall back. */
+  bakeBudget?: number;
 }
 
 /** SHADER-mode quad of one character: all visible layers sampled and composited in one draw. */
@@ -101,6 +109,13 @@ interface CharacterRecord extends Rankable {
   shadow: THREE.Mesh | null;
   layers: LayerMesh[];
   composite: CompositeQuad | null;
+  /** Drawable layers of the current pose (resident or FAILED), collected when the pose key changes. */
+  bindings: LayerBinding[];
+  /** FULL_CACHE: the cell this character draws, valid while the cell still holds `key` at `generation`. */
+  cached: { key: string; cell: CacheCell; generation: number } | null;
+  cachedMesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> | null;
+  /** FULL_CACHE: the current pose is shown directly (SHADER/LAYERED) because it is not cached. */
+  directShown: boolean;
   appearanceRef: AppearanceDefinition | null;
   resolved: ResolvedAppearance | null;
   appearanceKey: string;
@@ -122,6 +137,9 @@ interface CharacterRecord extends Rankable {
 }
 
 const SHADOW_RADIUS = 0.36;
+const CACHE_WINDOW_FRAMES = 60;
+const CACHE_MIN_HIT_RATIO = 0.6;
+const CACHE_PAUSE_FRAMES = 240;
 
 function createShadowTexture(): THREE.DataTexture {
   const n = 64;
@@ -151,8 +169,20 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private readonly depthBias: number;
   private readonly margin: number;
   private readonly shadowsEnabled: boolean;
-  readonly mode: 'LAYERED' | 'SHADER';
+  readonly mode: 'LAYERED' | 'SHADER' | 'FULL_CACHE';
   private readonly pixelsPerUnit: number;
+  private readonly frameCache: FrameCacheBackend | null;
+  private readonly bakeBudget: number;
+  private bakeJobs: BakeJob[] = [];
+  private contextLost = false;
+  /**
+   * FULL_CACHE thrash breaker (hysteresis): when a 60-frame window keeps baking (>= 25 % of the budget per frame,
+   * or >= 1 bake per 10 lookups) while the hit ratio stays below 60 %, the working set does not fit the cache; baking pauses for CACHE_PAUSE_FRAMES (misses use SHADER, cached
+   * cells keep being served), then the cache tries again.
+   */
+  private readonly cacheWindow = { frames: 0, bakes: 0, hits: 0, lookups: 0 };
+  private cachePausedUntil = 0;
+  private cachePauses = 0;
   private readonly quad = createUnitQuadGeometry();
   private readonly missing = createMissingTexture();
   private readonly shadowGeometry = new THREE.CircleGeometry(SHADOW_RADIUS, 24).rotateX(-Math.PI / 2);
@@ -178,7 +208,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     this.depthBias = options.depthBias ?? 0.1;
     this.margin = options.filterMargin ?? 1;
     this.shadowsEnabled = options.shadows ?? true;
-    this.mode = options.mode ?? 'LAYERED';
+    this.frameCache = options.frameCache ?? null;
+    this.mode = options.mode === 'FULL_CACHE' && !this.frameCache ? 'SHADER' : (options.mode ?? 'LAYERED');
+    this.bakeBudget = options.bakeBudget ?? 24;
     this.pixelsPerUnit = this.index.manifest.rigs[0]?.pixelsPerWorldUnit ?? 128;
     this.root.name = 'uvce-characters';
     this.shadowRoot.name = 'uvce-shadows';
@@ -213,6 +245,11 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       cacheEvictions: 0,
       staleBindings: 0,
       compositedCharacters: 0,
+      cachedCharacters: 0,
+      frameCacheBakes: 0,
+      frameCacheEvictions: 0,
+      frameCachePaused: false,
+      frameCachePauses: 0,
     };
   }
 
@@ -281,6 +318,10 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       shadow,
       layers: [],
       composite: null,
+      bindings: [],
+      cached: null,
+      cachedMesh: null,
+      directShown: false,
       appearanceRef: null,
       resolved: null,
       appearanceKey: '',
@@ -320,6 +361,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     this.pin(rec, NO_ITEMS);
     for (const l of rec.layers) l.mesh.material.dispose();
     rec.composite?.mesh.material.dispose();
+    rec.cachedMesh?.material.dispose();
     this.root.remove(rec.group);
     if (rec.shadow) this.shadowRoot.remove(rec.shadow);
     this.records.delete(rec.entityId);
@@ -351,56 +393,31 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   }
 
   /**
-   * SHADER mode: binds every drawable layer to one composite quad. Returns false (caller uses LAYERED for this
-   * character) when the composite cannot represent the pose exactly: a FAILED page (its placeholder is drawn by the
-   * LAYERED path) or more layers than composite slots.
+   * SHADER: binds every drawable layer to one composite quad. Returns false (caller uses LAYERED for this pose) when
+   * the composite cannot represent the pose exactly: a FAILED page (its placeholder is drawn by the LAYERED path) or
+   * more layers than composite slots.
    */
   private applyComposite(rec: CharacterRecord, rig: { footPivot: { x: number; y: number } }, bindings: LayerBinding[]): boolean {
     if (bindings.length === 0 || bindings.length > MAX_COMPOSITE_LAYERS || bindings.some((b) => b.texture === null)) return false;
     const cq = this.compositeQuad(rec);
     const u = cq.mesh.material.uniforms;
-    const quads = u.uQuad?.value as THREE.Vector4[];
-    const uvs = u.uUv?.value as THREE.Vector4[];
-    const m = this.margin;
-    let x0 = Infinity;
-    let y0 = Infinity;
-    let x1 = -Infinity;
-    let y1 = -Infinity;
-    cq.handles = [];
-    // Back to front: the order LAYERED quads are drawn in.
-    const ordered = [...bindings].sort((a, b) => a.layer.order - b.layer.order);
-    ordered.forEach((b, i) => {
-      const { layer, page } = b;
-      const qx = layer.dest.x - rig.footPivot.x - m;
-      const qy = layer.dest.y - rig.footPivot.y - m;
-      const qw = layer.dest.w + 2 * m;
-      const qh = layer.dest.h + 2 * m;
-      (quads[i] as THREE.Vector4).set(qx, qy, qw, qh);
-      (uvs[i] as THREE.Vector4).set((layer.region.x - m) / page.width, 1 - (layer.region.y - m) / page.height, (layer.region.x + layer.region.w + m) / page.width, 1 - (layer.region.y + layer.region.h + m) / page.height);
-      (u[`uMap${i}`] as THREE.IUniform).value = b.texture;
-      cq.handles.push(b.handle as PageHandle);
-      x0 = Math.min(x0, qx);
-      y0 = Math.min(y0, qy);
-      x1 = Math.max(x1, qx + qw);
-      y1 = Math.max(y1, qy + qh);
-    });
-    for (let i = ordered.length; i < MAX_COMPOSITE_LAYERS; i++) (u[`uMap${i}`] as THREE.IUniform).value = this.missing;
-    (u.uCount as THREE.IUniform).value = ordered.length;
-    (u.uBounds?.value as THREE.Vector4).set(x0, y0, x1 - x0, y1 - y0);
+    const b = setCompositeLayers(u, bindings as CompositeLayerInput[], rig.footPivot, this.margin, this.missing);
+    (u.uBounds?.value as THREE.Vector4).set(b.x, b.y, b.w, b.h);
+    cq.handles = [...bindings].sort((x, y) => x.layer.order - y.layer.order).map((x) => x.handle as PageHandle);
     cq.mesh.visible = true;
     for (const l of rec.layers) l.mesh.visible = false;
+    if (rec.cachedMesh) rec.cachedMesh.visible = false;
     return true;
   }
 
-  /** Binds the pose's layers to resident pages (fresh handles); counts layers still loading or failed. */
-  private applyPose(rec: CharacterRecord): void {
+  /** Collects the pose's layers as resident (fresh handle) or FAILED bindings; counts layers still loading. */
+  private collectBindings(rec: CharacterRecord): void {
     rec.pendingLayers = 0;
     rec.failedLayers = 0;
+    rec.bindings = [];
     rec.auditedEpoch = this.registry.handleEpoch;
     const pose = rec.pose;
-    const rig = rec.resolved?.rig;
-    if (!pose || !rig) return;
-    const bindings: LayerBinding[] = [];
+    if (!pose || !rec.resolved) return;
     for (const layer of pose.layers) {
       const page = this.index.pages.get(layer.region.page);
       if (!page) continue;
@@ -411,13 +428,20 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         continue;
       }
       if (!texture) rec.failedLayers++;
-      bindings.push({ layer, page, handle: texture ? handle : null, texture });
+      rec.bindings.push({ layer, page, handle: texture ? handle : null, texture });
     }
-    if (this.mode === 'SHADER' && this.applyComposite(rec, rig, bindings)) return;
+  }
+
+  /** Shows the current bindings without the frame cache: SHADER composite if enabled and exact, else LAYERED quads. */
+  private presentDirect(rec: CharacterRecord): void {
+    const rig = rec.resolved?.rig;
+    if (rec.cachedMesh) rec.cachedMesh.visible = false;
+    if (!rig) return;
+    if (this.mode !== 'LAYERED' && this.applyComposite(rec, rig, rec.bindings)) return;
     if (rec.composite) rec.composite.mesh.visible = false;
     const m = this.margin;
     let drawn = 0;
-    for (const { layer, page, handle, texture } of bindings) {
+    for (const { layer, page, handle, texture } of rec.bindings) {
       const lm = this.layerMesh(rec, drawn);
       lm.handle = texture ? handle : null;
       const u = lm.mesh.material.uniforms;
@@ -443,6 +467,119 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     for (let i = drawn; i < rec.layers.length; i++) (rec.layers[i] as LayerMesh).mesh.visible = false;
   }
 
+  /** Binds the pose's layers (fresh handles) and shows them; in FULL_CACHE mode presentCached() decides each frame. */
+  private applyPose(rec: CharacterRecord): void {
+    this.collectBindings(rec);
+    rec.cached = null; // a new pose needs its own cache cell
+    rec.directShown = false; // ...and whatever is shown directly is the previous pose: present again
+    if (this.mode !== 'FULL_CACHE') this.presentDirect(rec);
+  }
+
+  private cachedQuad(rec: CharacterRecord): THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> {
+    if (!rec.cachedMesh) {
+      const mesh = new THREE.Mesh(this.quad, createSpriteLayerMaterial({ pixelsPerUnit: this.pixelsPerUnit, depthBias: this.depthBias }));
+      mesh.name = `cached:${rec.entityId}`;
+      mesh.frustumCulled = false;
+      mesh.matrixAutoUpdate = false;
+      rec.group.add(mesh);
+      rec.cachedMesh = mesh;
+    }
+    return rec.cachedMesh;
+  }
+
+  /**
+   * FULL_CACHE, every frame: keep drawing a still-valid cell; else bind the cell already holding this frame; else bake
+   * it this frame (budget permitting, all layers resident, bounds inside the cell); else show the pose directly.
+   */
+  private presentCached(rec: CharacterRecord, key: string, counters: { hits: number; misses: number }): void {
+    const cache = this.frameCache;
+    const rig = rec.resolved?.rig;
+    const pose = rec.pose;
+    if (!cache || !rig || !pose) return;
+    const alloc = cache.allocator;
+    const held = rec.cached;
+    if (held && held.key === key && alloc.isValid(held.cell, key, held.generation)) {
+      alloc.touch(held.cell);
+      counters.hits++;
+      return;
+    }
+    let cell = this.contextLost ? null : alloc.lookup(key);
+    if (cell) counters.hits++;
+    else {
+      counters.misses++;
+      const b = pose.bounds;
+      const m = this.margin;
+      const bakeable =
+        !this.contextLost &&
+        this.frame >= this.cachePausedUntil &&
+        alloc.admit(key) && // bake on second sight: one-off frames never displace frames that get reused
+        this.bakeJobs.length < this.bakeBudget &&
+        rec.pendingLayers === 0 &&
+        rec.failedLayers === 0 &&
+        rec.bindings.length > 0 &&
+        rec.bindings.length <= MAX_COMPOSITE_LAYERS &&
+        b !== null &&
+        b.x - m >= -CELL_OFFSET &&
+        b.y - m >= -CELL_OFFSET &&
+        b.x + b.w + m <= CANVAS_SIZE + CELL_OFFSET &&
+        b.y + b.h + m <= CANVAS_SIZE + CELL_OFFSET;
+      cell = bakeable ? alloc.allocate(key) : null;
+      if (!cell) {
+        // Not cached this frame: draw the pose directly (re-bind if the quad shown was a cached frame).
+        if (!rec.directShown) this.presentDirect(rec);
+        rec.directShown = true;
+        rec.cached = null;
+        return;
+      }
+      this.bakeJobs.push({ cell, layers: rec.bindings as CompositeLayerInput[], pivot: rig.footPivot });
+    }
+    const m = this.margin;
+    const b = pose.bounds as NonNullable<typeof pose.bounds>;
+    const mesh = this.cachedQuad(rec);
+    const u = mesh.material.uniforms;
+    (u.uQuad?.value as THREE.Vector4).set(b.x - rig.footPivot.x - m, b.y - rig.footPivot.y - m, b.w + 2 * m, b.h + 2 * m);
+    cache.uvRect(cell, { x: b.x - m, y: b.y - m, w: b.w + 2 * m, h: b.h + 2 * m }, u.uUvRect?.value as THREE.Vector4);
+    (u.uMap as THREE.IUniform).value = cache.pageTexture(cell.page);
+    (u.uOpacity as THREE.IUniform).value = 1;
+    mesh.visible = true;
+    if (rec.composite) rec.composite.mesh.visible = false;
+    for (const l of rec.layers) l.mesh.visible = false;
+    rec.cached = { key, cell, generation: cell.generation };
+    rec.directShown = false; // cached quad shown; a later fallback must present directly again
+  }
+
+  private updateThrashBreaker(bakes: number, counters: { hits: number; misses: number }): void {
+    const w = this.cacheWindow;
+    w.frames++;
+    w.bakes += bakes;
+    w.hits += counters.hits;
+    w.lookups += counters.hits + counters.misses;
+    if (w.frames < CACHE_WINDOW_FRAMES) return;
+    // Sustained baking that the hit ratio does not repay = the working set does not fit. "Sustained": a quarter of
+    // the budget every frame (large crowds), or one bake per ten lookups (cell-limited small caches).
+    const saturated = w.bakes >= 0.25 * this.bakeBudget * w.frames || w.bakes >= 0.1 * w.lookups;
+    const hitRatio = w.lookups > 0 ? w.hits / w.lookups : 1;
+    if (saturated && hitRatio < CACHE_MIN_HIT_RATIO) {
+      this.cachePausedUntil = this.frame + CACHE_PAUSE_FRAMES;
+      this.cachePauses++;
+    }
+    w.frames = 0;
+    w.bakes = 0;
+    w.hits = 0;
+    w.lookups = 0;
+  }
+
+  /** WebGL context lost/restored: cached frames are gone with their render targets. */
+  onContextLost(): void {
+    this.contextLost = true;
+    this.frameCache?.onContextLost();
+  }
+
+  onContextRestored(): void {
+    this.contextLost = false;
+    this.frameCache?.onContextRestored();
+  }
+
   prepareFrame(characters: readonly CharacterInstance[], nowMs: number): void {
     const t0 = performance.now();
     this.frame++;
@@ -463,6 +600,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     let staleBindings = 0;
     let poseUpdates = 0;
     let culled = 0;
+    const cacheCounters = { hits: 0, misses: 0 };
+    this.frameCache?.allocator.beginFrame(this.frame);
+    this.bakeJobs = [];
     const appearances = new Set<string>();
     for (const c of characters) {
       const rec = this.records.get(c.entityId) ?? this.createRecord(c.entityId);
@@ -533,6 +673,8 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         }
         rec.auditedEpoch = this.registry.handleEpoch;
       }
+      // Frame key without the registry revision: a baked frame stays valid when source pages are evicted later.
+      if (this.mode === 'FULL_CACHE') this.presentCached(rec, `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}`, cacheCounters);
       rec.group.position.set(c.position.x, c.position.y, c.position.z);
       rec.group.visible = true;
       if (rec.shadow) {
@@ -544,6 +686,10 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       visible.push(rec);
     }
     for (const rec of this.records.values()) if (rec.seenFrame !== this.frame) this.destroyRecord(rec);
+    const bakes = this.bakeJobs.length;
+    if (bakes > 0) this.frameCache?.bake(this.bakeJobs); // before this frame renders: cells hold their frames
+    this.bakeJobs = [];
+    if (this.mode === 'FULL_CACHE') this.updateThrashBreaker(bakes, cacheCounters);
     // Painter order: one back-to-front sort over characters and transparent objects (renderOrder = rank).
     const ranked = this.ranked;
     ranked.length = 0;
@@ -561,13 +707,19 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     }
     let layers = 0;
     let composites = 0;
+    let cachedCharacters = 0;
     for (const rec of visible) {
       for (const l of rec.layers) if (l.mesh.visible) layers++;
       if (rec.composite?.mesh.visible) {
         layers += rec.composite.handles.length;
         composites++;
       }
+      if (rec.cachedMesh?.visible) {
+        layers += rec.bindings.length;
+        cachedCharacters++;
+      }
     }
+    const lookups = cacheCounters.hits + cacheCounters.misses;
     const reg = this.registry.stats();
     this.metrics = {
       ...this.emptyMetrics(),
@@ -581,6 +733,13 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       prepareCpuMs: performance.now() - t0,
       staleBindings,
       compositedCharacters: composites,
+      cachedCharacters,
+      frameCacheBakes: bakes,
+      frameCacheEvictions: this.frameCache?.allocator.stats().evictions ?? 0,
+      frameCachePaused: this.mode === 'FULL_CACHE' && this.frame < this.cachePausedUntil,
+      frameCachePauses: this.cachePauses,
+      cacheHitRatio: this.mode === 'FULL_CACHE' && lookups > 0 ? cacheCounters.hits / lookups : null,
+      compositeEstimatedBytes: (this.frameCache?.allocator.pages ?? 0) * (this.frameCache?.bytesPerPage ?? 0),
       sourceEstimatedBytes: reg.residentBytes,
       pendingDownloads: reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.RETRY_BACKOFF,
       cacheEvictions: reg.evictions,
@@ -630,6 +789,12 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       if (rec.composite?.mesh.visible) {
         visibleLayers += rec.composite.handles.length;
         violations += this.compositeStaleSlots(rec.composite);
+      }
+      if (rec.cachedMesh?.visible) {
+        visibleLayers += rec.bindings.length;
+        const c = rec.cached;
+        const ok = c !== null && this.frameCache !== null && this.frameCache.allocator.isValid(c.cell, c.key, c.generation) && rec.cachedMesh.material.uniforms.uMap?.value === this.frameCache.pageTexture(c.cell.page);
+        if (!ok) violations++;
       }
     }
     return { visibleLayers, violations };

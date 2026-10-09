@@ -1,7 +1,7 @@
 # UVCE Milestone 3 — progress report (in progress)
 
-Date: 2026-10-09 · Branch: `claude/nifty-thompson-7t015u` · Code commit `abd4261` · Machine: RTX 3070 / Ryzen 5 5600,
-Windows 11.
+Date: 2026-10-09 · Branch: `claude/nifty-thompson-7t015u` · SHADER: commit `abd4261`; FULL_CACHE: the commit after it ·
+Machine: RTX 3070 / Ryzen 5 5600, Windows 11.
 
 ## Blueprint tasks → status
 
@@ -10,23 +10,27 @@ Windows 11.
 | 3 | `SHADER` composition behind capability flags with safe fallback | **Done**: `mode=SHADER`, per-character LAYERED fallback, texture-unit check ([ADR-13](UVCE_ARCHITECTURE_DECISIONS.md)) |
 | 4 | Toggle modes, benchmark the same stress matrix, compare cost and fidelity | **Done for LAYERED vs SHADER** on one GPU ([results](benchmark-results/gpu/2026-10-09-rtx3070-m3/README.md)); the UI toggle is the URL parameter |
 | 1 | `PARTIAL_CACHE` for safe non-interleaving groups | Not started |
-| 2 | `FULL_CACHE` with composite page allocator, refcount and budget | Not started |
+| 2 | `FULL_CACHE` with composite page allocator, refcount and budget | **Done (correctness)**: `mode=FULL_CACHE`, render-target cell cache, generations, LRU, admission control, thrash breaker ([ADR-14](UVCE_ARCHITECTURE_DECISIONS.md)). **GPU benchmark pending** (see Pending runs) |
 | 5 | Adaptive render planner with hysteresis | Not started (the renderer can already choose per character) |
 
 The blueprint's M3 exit condition is that at least two modes work on the same inputs with screenshot parity and a
-benchmark. LAYERED and SHADER now meet it. The planner is still missing, so M3 is not finished.
+benchmark. LAYERED and SHADER meet it; FULL_CACHE passes the same parity suite, and its benchmark is pending. The
+planner and PARTIAL_CACHE are still missing, so M3 is not finished.
 
 ## Verified on this machine (clean regenerated assets)
 
 ```text
 pnpm typecheck                 exit 0
-pnpm test                      Test Files 10 passed, Tests 97 passed (3 new SHADER renderer tests)
-pnpm test:e2e                  34 passed (10 SHADER parity cases, SHADER negative control + draw-call check,
-                               SHADER swap storm: composited 100/100, 0 binding violations)
+pnpm test                      Test Files 11 passed, Tests 106 passed (3 SHADER renderer tests, 9 frame-cache tests)
+pnpm test:e2e                  47 passed (10 parity cases each for SHADER and FULL_CACHE with a check that every
+                               character really used the mode, negative controls, swap storm in all three modes,
+                               context loss in LAYERED and FULL_CACHE)
 legacy Python validator        PASS
 ```
 
-SHADER parity: 0 pixels beyond ±3/255 in every case, max channel delta 1 (LAYERED: 2).
+Parity, 0 pixels beyond ±3/255 in every case: SHADER max channel delta 1, FULL_CACHE max 2 (LAYERED: 2).
+Swap storm (100 characters, 2,400 changes, 1 MiB source budget): 0 binding violations in every mode; FULL_CACHE served
+up to 86 characters from the cache, then its thrash breaker paused baking (as designed for that churn).
 
 ## Result
 
@@ -49,11 +53,44 @@ CPU. It stays off by default until a weaker GPU confirms the trade-off.
 - A FAILED page makes that character fall back to LAYERED (the placeholder is drawn there). Characters with more than 8
   visible layers would also fall back; the current rig has exactly 8.
 - No planner yet, so the mode is global per page load.
+- FULL_CACHE under minification (lit stage scene, mipmaps) differs from LAYERED by up to 64/255 on 8.7 % of pixels at
+  300 characters: it downsamples the finished composite on the canvas grid, while LAYERED downsamples each layer on
+  its own atlas grid. With `mips=0` or nearest filtering it matches SHADER's level. Crops look the same.
+- FULL_CACHE only pays off when frames repeat (shared looks, synchronised animation, idle NPCs). In the default random
+  crowd at 300 characters the breaker pauses it and it behaves like SHADER plus the bake cost of each window.
+
+## Pending runs (to do when the RTX 3070 machine is idle)
+
+Recorded 2026-10-09 at the owner's request: postponed, not dropped. Each run needs the machine untouched for about
+10–15 minutes (headed Chromium windows pop up). Run on a clean commit and commit the results.
+
+- [ ] **4K fill-rate stress, LAYERED vs SHADER.** This is a proxy for a weaker GPU: 4× the pixels means 4× the
+      per-pixel work, while the CPU work stays the same.
+      ```powershell
+      pnpm build
+      pnpm bench:baseline -- --gpu --headed --width 3840 --height 2160 --out docs/benchmark-results/gpu/<date>-rtx3070-4k/layered
+      pnpm bench:baseline -- --gpu --headed --width 3840 --height 2160 --query '&mode=SHADER' --out docs/benchmark-results/gpu/<date>-rtx3070-4k/shader
+      ```
+      Use `(Get-Date).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)` for `<date>`, and check
+      that `environment.glRenderer` names the RTX 3070. Decision input: if SHADER still wins at 4K, or its raster time
+      stays well under the 16.7 ms frame, that supports making it the default.
+- [ ] **FULL_CACHE GPU matrix** (needs the idle machine, about 30 min): for each of `count` 100 and 300 and each
+      workload `''`, `&looks=8`, `&looks=8&sync=1`, run `mode=LAYERED` / `SHADER` / `FULL_CACHE`:
+      ```powershell
+      pnpm bench:baseline -- --gpu --headed --counts '100,300' --query '&mode=FULL_CACHE&looks=8&sync=1' --out docs/benchmark-results/gpu/<date>-rtx3070-cache/full-looks8-sync
+      ```
+      Add `bench:stages` for the winner. Report hit ratio, bakes per frame and breaker pauses from the panel or
+      `snapshot().character`. Decide which workloads FULL_CACHE wins (blueprint exit: say which mode wins per workload).
+- [ ] **A real iGPU laptop**, whenever one is available: the same two commands at 1920x1080.
+- [ ] **RunPod: not planned.** Its weakest offering is still a discrete server GPU, so it cannot answer the iGPU
+      question. Reconsider only for unattended GPU CI, after the owner logs in and approves a live price.
 
 ## Next
 
 1. Run `mode=SHADER` on a second, weaker GPU with the same commands (`LOCAL_TEST_CHECKLIST.md` §2 plus
    `--query "&mode=SHADER"`) and decide the default.
-2. `FULL_CACHE`: composite atlas pages with refcount, budget and eviction, reusing the residency registry.
-3. `PARTIAL_CACHE` only for layer groups that never interleave across directions.
-4. An adaptive planner (per character: projected size, swap rate, cache hit chance, measured cost; with hysteresis).
+2. Run the FULL_CACHE GPU matrix (Pending runs) and write down which mode wins per workload.
+3. An adaptive planner (per character: projected size, swap rate, cache hit chance, measured cost; with hysteresis).
+   The FULL_CACHE breaker is a first, cache-local version of that hysteresis.
+4. `PARTIAL_CACHE` only for layer groups that never interleave across directions (lowest priority: FULL_CACHE and
+   SHADER already cover the cases a partial cache would).

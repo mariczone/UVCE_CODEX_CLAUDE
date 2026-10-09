@@ -18,7 +18,7 @@ export const FEATURES: readonly FeatureInfo[] = [
   { id: 'LAYERED', implemented: true, enabled: true, milestone: 'M0', note: 'Reference baseline: one quad per layer, exact painter order.' },
   { id: 'SHADER', implemented: true, enabled: false, milestone: 'M3', note: 'One composited quad per character (URL mode=SHADER); off by default until it wins benchmarks.' },
   { id: 'PARTIAL_CACHE', implemented: false, enabled: false, milestone: 'M3', note: 'Group composite cache; keys exist (partGroupKey), cache does not.' },
-  { id: 'FULL_CACHE', implemented: false, enabled: false, milestone: 'M3', note: 'Full frame composite cache; keys exist (compositeFrameKey), cache does not.' },
+  { id: 'FULL_CACHE', implemented: true, enabled: false, milestone: 'M3', note: 'Baked whole frames in a render-target cache (URL mode=FULL_CACHE, cacheMiB=); falls back to SHADER on a miss.' },
   { id: 'WEBGPU', implemented: false, enabled: false, milestone: 'M5', note: 'WebGL2 is the baseline; sprite material is isolated for a future TSL port.' },
   { id: 'VIRTUAL_ATLAS', implemented: true, enabled: true, milestone: 'M2', note: 'Compile-time atlas groups (mip-safe) + generation-checked page handles; no runtime repacking yet.' },
   { id: 'STREAMING', implemented: true, enabled: true, milestone: 'M2', note: 'Budget (URL budgetMiB=), LRU eviction, retry/backoff, abortable fetches, prefetch, context-loss recovery.' },

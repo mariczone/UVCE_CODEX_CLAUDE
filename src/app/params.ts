@@ -27,6 +27,12 @@ export interface AppParams {
   budgetMiB: number;
   /** `mips=0` uploads linear pages without mip chains (quality/performance comparison). */
   mips: boolean;
+  /** FULL_CACHE frame-cache budget in MiB (whole render-target pages incl. mips). */
+  cacheMiB: number;
+  /** Distinct NPC outfits in the crowd (unset = every NPC random): cache-friendliness of the workload. */
+  looks: number | null;
+  /** sync=1: NPCs animate in step (formation-like workload). */
+  sync: boolean;
 }
 
 export function parseParams(search: string): AppParams {
@@ -65,5 +71,8 @@ export function parseParams(search: string): AppParams {
     bench: q.get('bench') === '1',
     budgetMiB: Math.max(1, num('budgetMiB', 256)),
     mips: q.get('mips') !== '0',
+    cacheMiB: Math.max(8, num('cacheMiB', 64)),
+    looks: q.get('looks') === null ? null : Math.max(1, Math.floor(num('looks', 1))),
+    sync: q.get('sync') === '1',
   };
 }

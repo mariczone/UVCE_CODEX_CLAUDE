@@ -32,7 +32,18 @@ void main() {
 }
 `;
 
-function fragmentShader(slots: number): string {
+/** FULL_CACHE bake pass: the same composite, rasterised 1 texel = 1 sprite px into a cell of a cache page. */
+const bakeVertexShader = /* glsl */ `
+uniform vec4 uBounds;      // the whole cell in sprite px relative to the foot pivot
+uniform vec4 uCellNdc;     // cell corners in the cache page: x0, yTop, x1, yBottom (NDC)
+varying vec2 vPx;
+void main() {
+  vPx = uBounds.xy + position.xy * uBounds.zw;
+  gl_Position = vec4(mix(uCellNdc.x, uCellNdc.z, position.x), mix(uCellNdc.y, uCellNdc.w, position.y), 0.0, 1.0);
+}
+`;
+
+function fragmentShader(slots: number, bake = false): string {
   const samplers = Array.from({ length: slots }, (_, i) => `uniform sampler2D uMap${i};`).join('\n');
   const steps = Array.from({ length: slots }, (_, i) => `  if (uCount > ${i}) { vec4 s = layerSample(uMap${i}, uQuad[${i}], uUv[${i}]); acc = s + (1.0 - s.a) * acc; }`).join('\n');
   return /* glsl */ `
@@ -51,10 +62,80 @@ vec4 layerSample(sampler2D map, vec4 quad, vec4 uvRect) {
 void main() {
   vec4 acc = vec4(0.0);
 ${steps}
-  if (acc.a <= 0.0) discard;
+${bake ? '  // Bake: write every texel (transparent ones too), which also clears the cell gutter.' : '  if (acc.a <= 0.0) discard;'}
   gl_FragColor = acc;
 }
 `;
+}
+
+function compositeUniforms(placeholder: THREE.Texture): Record<string, THREE.IUniform> {
+  const uniforms: Record<string, THREE.IUniform> = {
+    uBounds: { value: new THREE.Vector4() },
+    uQuad: { value: Array.from({ length: MAX_COMPOSITE_LAYERS }, () => new THREE.Vector4()) },
+    uUv: { value: Array.from({ length: MAX_COMPOSITE_LAYERS }, () => new THREE.Vector4()) },
+    uCount: { value: 0 },
+  };
+  for (let i = 0; i < MAX_COMPOSITE_LAYERS; i++) uniforms[`uMap${i}`] = { value: placeholder };
+  return uniforms;
+}
+
+/** Bake material: premultiplied result written as-is (no blending, no depth) into a FULL_CACHE page cell. */
+export function createBakeMaterial(placeholder: THREE.Texture): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    name: 'uvce-sprite-bake',
+    uniforms: { ...compositeUniforms(placeholder), uCellNdc: { value: new THREE.Vector4() } },
+    vertexShader: bakeVertexShader,
+    fragmentShader: fragmentShader(MAX_COMPOSITE_LAYERS, true),
+    transparent: false,
+    depthTest: false,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.NoBlending,
+  });
+}
+
+/** One resident layer to composite (see ResolvedLayer: dest on the canonical canvas, region on its page). */
+export interface CompositeLayerInput {
+  layer: { order: number; dest: { x: number; y: number; w: number; h: number }; region: { x: number; y: number; w: number; h: number } };
+  page: { width: number; height: number };
+  texture: THREE.Texture;
+}
+
+/**
+ * Fills the per-layer uniforms (back to front) of a composite or bake material and returns the union of the layer
+ * quads in sprite px relative to the foot pivot (incl. the filter margin).
+ */
+export function setCompositeLayers(
+  u: Record<string, THREE.IUniform>,
+  layers: readonly CompositeLayerInput[],
+  pivot: { x: number; y: number },
+  margin: number,
+  placeholder: THREE.Texture,
+): { x: number; y: number; w: number; h: number } {
+  const quads = u.uQuad?.value as THREE.Vector4[];
+  const uvs = u.uUv?.value as THREE.Vector4[];
+  const m = margin;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  const ordered = [...layers].sort((a, b) => a.layer.order - b.layer.order);
+  ordered.forEach(({ layer, page, texture }, i) => {
+    const qx = layer.dest.x - pivot.x - m;
+    const qy = layer.dest.y - pivot.y - m;
+    const qw = layer.dest.w + 2 * m;
+    const qh = layer.dest.h + 2 * m;
+    (quads[i] as THREE.Vector4).set(qx, qy, qw, qh);
+    (uvs[i] as THREE.Vector4).set((layer.region.x - m) / page.width, 1 - (layer.region.y - m) / page.height, (layer.region.x + layer.region.w + m) / page.width, 1 - (layer.region.y + layer.region.h + m) / page.height);
+    (u[`uMap${i}`] as THREE.IUniform).value = texture;
+    x0 = Math.min(x0, qx);
+    y0 = Math.min(y0, qy);
+    x1 = Math.max(x1, qx + qw);
+    y1 = Math.max(y1, qy + qh);
+  });
+  for (let i = ordered.length; i < MAX_COMPOSITE_LAYERS; i++) (u[`uMap${i}`] as THREE.IUniform).value = placeholder;
+  (u.uCount as THREE.IUniform).value = ordered.length;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
 export interface CompositeMaterialOptions {
@@ -66,14 +147,10 @@ export interface CompositeMaterialOptions {
 
 export function createCompositeMaterial(options: CompositeMaterialOptions): THREE.ShaderMaterial {
   const uniforms: Record<string, THREE.IUniform> = {
-    uBounds: { value: new THREE.Vector4() },
+    ...compositeUniforms(options.placeholder),
     uPixelsPerUnit: { value: options.pixelsPerUnit },
     uDepthBias: { value: options.depthBias },
-    uQuad: { value: Array.from({ length: MAX_COMPOSITE_LAYERS }, () => new THREE.Vector4()) },
-    uUv: { value: Array.from({ length: MAX_COMPOSITE_LAYERS }, () => new THREE.Vector4()) },
-    uCount: { value: 0 },
   };
-  for (let i = 0; i < MAX_COMPOSITE_LAYERS; i++) uniforms[`uMap${i}`] = { value: options.placeholder };
   return new THREE.ShaderMaterial({
     name: 'uvce-sprite-composite',
     uniforms,

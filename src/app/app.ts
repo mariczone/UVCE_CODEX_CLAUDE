@@ -12,6 +12,8 @@ import type { CompiledManifest, ManifestIndex } from '../uvce/schema/compiled-ma
 import { indexManifest } from '../uvce/schema/compiled-manifest.ts';
 import type { CharacterInstance, RenderMode } from '../uvce/render/contracts.ts';
 import { MAX_COMPOSITE_LAYERS } from '../uvce/render/webgl/composite-material.ts';
+import { WebGLFrameCacheBackend } from '../uvce/render/webgl/frame-cache.ts';
+import { createMissingTexture, createUnitQuadGeometry } from '../uvce/render/webgl/sprite-material.ts';
 import { LayeredCharacterRenderer } from '../uvce/render/webgl/layered-renderer.ts';
 import { GpuTimer } from './gpu-timer.ts';
 import { DebugOverlay, type OverlayOptions } from './overlay.ts';
@@ -72,6 +74,8 @@ export class UvceApp {
   renderMode: RenderMode;
   /** Why the requested render mode was replaced on this device (null = as requested). */
   renderModeFallback: string | null = null;
+  /** FULL_CACHE frame cache (null in other modes). */
+  readonly frameCache: WebGLFrameCacheBackend | null;
   readonly gpuTimer: GpuTimer;
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   controls: OrbitControls | null = null;
@@ -145,25 +149,32 @@ export class UvceApp {
     this.canvas.addEventListener('webglcontextlost', () => {
       this.contextLost = true;
       this.registry.onContextLost();
+      this.characters.onContextLost();
       this.gpuTimer.reset();
     });
     this.canvas.addEventListener('webglcontextrestored', () => {
       this.contextLost = false;
       this.gpuTimer.reset();
       this.registry.onContextRestored();
+      this.characters.onContextRestored();
     });
     const parity = this.params.scene === 'parity';
     const pixel = parity || this.params.scene === 'studio';
     this.stage = parity ? createParityStage(this.scene, PARITY_VARIANTS[this.params.variant]) : pixel ? createStudioStage(this.scene) : createStage(this.scene);
     this.camera = pixel ? createPixelCamera(1280, 720, this.pixelsPerUnit, PARITY_CAMERA_CENTER) : new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 120);
-    // SHADER needs one texture unit per composite slot; otherwise fall back to the LAYERED baseline.
+    // SHADER and FULL_CACHE (whose bake pass is the SHADER composite) need one texture unit per composite slot.
     const units = Number(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
-    if (this.renderMode === 'SHADER' && units < MAX_COMPOSITE_LAYERS) {
-      this.renderModeFallback = `SHADER needs ${MAX_COMPOSITE_LAYERS} texture units, this GPU exposes ${units}`;
+    if ((this.renderMode === 'SHADER' || this.renderMode === 'FULL_CACHE') && units < MAX_COMPOSITE_LAYERS) {
+      this.renderModeFallback = `${this.renderMode} needs ${MAX_COMPOSITE_LAYERS} texture units, this GPU exposes ${units}`;
       this.renderMode = 'LAYERED';
     }
-    const mode = this.renderMode === 'SHADER' ? 'SHADER' : 'LAYERED';
-    this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel, mode });
+    const mode = this.renderMode === 'SHADER' || this.renderMode === 'FULL_CACHE' ? this.renderMode : 'LAYERED';
+    const forced = this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest');
+    this.frameCache =
+      mode === 'FULL_CACHE'
+        ? new WebGLFrameCacheBackend(this.three, createUnitQuadGeometry(), { budgetBytes: this.params.cacheMiB * 1024 * 1024, filter: forced ?? 'linear', mipmaps: this.params.mips, placeholder: createMissingTexture() })
+        : null;
+    this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel, mode, frameCache: this.frameCache });
     for (const s of (this.stage as Partial<ParityStage>).sortables ?? []) this.characters.addSortedObject(s.id, s.object);
     for (const layer of this.params.hide) this.characters.setLayerHidden(layer, true);
     this.overlay = new DebugOverlay(opts.overlayCanvas);
@@ -267,7 +278,7 @@ export class UvceApp {
         { entityId: 'npc-0001', x: 0.32, z: -0.42, facingYaw: directionCenterYaw('SW'), clipId: 'idle', phaseOffsetMs: 300, appearance: { ...heroAppearance(), slots: { ...heroAppearance().slots, hair: { itemId: 'hair_02' }, hat: { itemId: 'hat_02' }, armor: { itemId: 'armor_02' }, weapon: { itemId: 'weapon_03' } } }, patrol: null },
       ];
     } else {
-      this.members = generateCrowd(this.index, { count: this.count, seed: this.seed });
+      this.members = generateCrowd(this.index, { count: this.count, seed: this.seed, ...(this.params.looks !== null ? { looks: this.params.looks } : {}), syncPhases: this.params.sync });
     }
     const parity = this.params.scene === 'parity';
     this.instances = this.members.map((m, i) => ({

@@ -48,6 +48,16 @@ export interface CharacterRenderMetrics {
   staleBindings: number;
   /** SHADER mode: visible characters drawn as one composited quad (the rest fell back to LAYERED). */
   compositedCharacters: number;
+  /** FULL_CACHE mode: visible characters drawn from a baked frame-cache cell. */
+  cachedCharacters: number;
+  /** FULL_CACHE mode: frames baked into the cache this frame. */
+  frameCacheBakes: number;
+  /** FULL_CACHE mode: cache cells reassigned to another frame since start (LRU eviction). */
+  frameCacheEvictions: number;
+  /** FULL_CACHE thrash breaker: baking is paused because the working set does not fit the cache. */
+  frameCachePaused: boolean;
+  /** FULL_CACHE: how often the thrash breaker paused baking since start. */
+  frameCachePauses: number;
 }
 
 /**

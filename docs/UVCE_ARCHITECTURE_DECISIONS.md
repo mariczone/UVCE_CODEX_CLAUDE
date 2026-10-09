@@ -1,7 +1,7 @@
 # UVCE Architecture Decisions (ADRs) — Milestones 0–2
 
 Short decision records for the POC. Each lists the decision, why, and what would make us revisit it.
-Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0–M2** (ADR-13: M3, in progress); paragraphs marked
+Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0–M2** (ADR-13/14: M3, in progress); paragraphs marked
 **(M1)** / **(M2)** record what those milestones changed.
 
 ## ADR-01 Standalone single-package POC next to the starter pack
@@ -250,3 +250,40 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
 - **Status:** behind `mode=SHADER`, LAYERED stays the default until a weaker GPU (iGPU) confirms the trade-off. The
   renderer is ready for a planner to choose per character. PARTIAL_CACHE, FULL_CACHE and the adaptive planner are
   not built yet.
+
+## ADR-14 FULL_CACHE render mode: baked whole frames with admission control and a thrash breaker (M3)
+
+- **Decision:** blueprint mode D. A character's exact frame (appearance key, clip, direction, frame index, debug
+  toggles) is baked once into a cell of a render-target "cache page" and then drawn as one quad with one texture
+  sample per pixel. That is cheaper per pixel than SHADER (up to 8 samples), so it is the candidate for weak GPUs
+  and for repeated looks.
+- **How:** `frame-cache.ts`. Pages are 2048² RGBA8 render targets with fixed 280×280 cells (the 256² canvas at offset
+  8). Cells sit on a grid aligned to 8, so mip levels 0..3 never mix two cells, and `TEXTURE_MAX_LEVEL = 3`. The bake
+  pass reuses the SHADER fragment code (`createBakeMaterial`, no blending, writes the whole cell including the
+  gutter); all of a frame's bakes for one page go into one render call before the frame renders. The budget is
+  `cacheMiB` (default 64 MiB = 3 pages = 147 cells), with at most 24 bakes per frame.
+- **Correctness:** each character keeps `{key, cell, generation}`. Any reassignment or `clear()` bumps the cell's
+  generation, so a character never draws another frame's cell (unit-tested with a forced eviction). LRU eviction
+  never takes a cell used in the current frame. Context loss clears the cache; characters fall back and re-bake
+  after restore (unit test + e2e: pixel-identical, frame drawn from the cache again).
+- **Fallback chain per character and frame:** FULL_CACHE → SHADER → LAYERED. A miss, an exhausted bake budget, a
+  pending or FAILED page, or bounds outside the cell draw the pose directly.
+- **Not thrashing** (blueprint: "planner no catastrophic mode thrashing"):
+  1. *Admission:* a frame is baked only on its second request within 120 frames, so one-off frames never displace
+     reused ones.
+  2. *Thrash breaker:* if a 60-frame window keeps baking (≥ 25 % of the budget per frame, or ≥ 1 bake per 10
+     lookups) while the hit ratio stays below 60 %, baking pauses for 240 frames. Cached cells are still served and
+     misses use SHADER; then it retries.
+  Measured (SwiftShader probe, 400 frames): at 300 random characters the breaker trips once per window and baking
+  stops; at 100 characters the hit ratio stays at 0.71–0.89 and the cache keeps working. In the 2,400-swap storm the
+  cache served up to 86 characters, then paused itself.
+- **Proof:** all 10 parity scenes pass in FULL_CACHE mode with every character drawn from the cache (0 px beyond ±3,
+  max delta 2); storm and context-loss e2e; 9 unit tests (allocator, generations, admission, breaker, context loss,
+  shared cells). Mutations (no generation check, breaker off) are caught.
+- **Known difference under minification:** in the lit stage scene with mipmaps, FULL_CACHE differs from LAYERED by
+  up to 64/255 on 8.7 % of pixels at 300 characters. With `mips=0` or nearest filtering it is in line with SHADER.
+  The cause is order and grid: FULL_CACHE downsamples the finished composite on the canvas grid; LAYERED downsamples
+  each layer on its own atlas grid and then composites. Both are valid, and downsampling the finished image is the
+  more faithful of the two. Crops look the same, with FULL_CACHE marginally softer.
+- **Status:** behind `mode=FULL_CACHE`. Whether it wins is workload-dependent; `looks=N` and `sync=1` produce
+  cache-friendly crowds for the benchmark. The GPU benchmark matrix is pending (owner's machine).

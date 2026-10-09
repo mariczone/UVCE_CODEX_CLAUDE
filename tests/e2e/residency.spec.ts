@@ -12,26 +12,28 @@ import { api, openApp } from './helpers.ts';
 const PAGE_RE = /\/uvce-compiled\/pages\//;
 
 test.describe('residency (Milestone 2)', () => {
-  for (const mode of ['LAYERED', 'SHADER'] as const) {
+  for (const mode of ['LAYERED', 'SHADER', 'FULL_CACHE'] as const) {
   test(`swap storm (${mode}): 100 characters, forced evictions, no stale bindings, budget respected, no refetch without eviction`, async ({ page }) => {
     test.setTimeout(180_000);
     // budgetMiB=1 is far below the pinned working set: every page nobody shows is evicted at the next frame.
     await openApp(page, `test=1&count=100&budgetMiB=1&mode=${mode}`);
     let maxViolations = 0;
+    let maxCached = 0;
     for (let step = 0; step < 60; step++) {
-      const audit = await api(page, (u, s: number) => {
+      const { audit, cached } = await api(page, (u, s: number) => {
         u.stormStep(s, 40);
         u.tick();
-        return u.auditBindings();
+        return { audit: u.auditBindings(), cached: u.snapshot().character.cachedCharacters };
       }, step);
       maxViolations = Math.max(maxViolations, audit.violations);
+      maxCached = Math.max(maxCached, cached);
       if (step % 3 === 0) await page.waitForTimeout(25); // let fetches/decodes land between frames
     }
     await api(page, (u) => u.waitForIdle());
     const result = await api(page, (u) => ({ stats: u.registryStats(), audit: u.auditBindings(), snap: u.snapshot(), pages: u.pageStatuses() }));
     const st = result.stats;
     console.log(
-      `[storm ${mode}] composited ${result.snap.character.compositedCharacters}/${result.snap.character.visibleCharacters}, 2400 slot changes: fetches ${st.fetches} (reloads ${st.reloads}), evictions ${st.evictions}, cancelled ${st.cancelled}, ` +
+      `[storm ${mode}] cached max ${maxCached} / end ${result.snap.character.cachedCharacters} (breaker pauses ${result.snap.character.frameCachePauses}), composited ${result.snap.character.compositedCharacters}/${result.snap.character.visibleCharacters}, 2400 slot changes: fetches ${st.fetches} (reloads ${st.reloads}), evictions ${st.evictions}, cancelled ${st.cancelled}, ` +
         `prefetch skipped ${st.prefetchSkipped}, stale handle hits ${st.staleResolves}, visible layers ${result.audit.visibleLayers}, ` +
         `binding violations ${maxViolations}, resident ${(st.residentBytes / 1048576).toFixed(2)} MiB = pinned ${(st.pinnedBytes / 1048576).toFixed(2)} MiB`,
     );
@@ -48,6 +50,12 @@ test.describe('residency (Milestone 2)', () => {
     for (const p of result.pages) expect(p.fetches, p.pageId).toBeLessThanOrEqual(1 + p.evictions + p.cancels);
     expect(result.snap.character.pendingLayers + result.snap.character.failedLayers).toBe(0);
     if (mode === 'SHADER') expect(result.snap.character.compositedCharacters).toBe(result.snap.character.visibleCharacters);
+    if (mode === 'FULL_CACHE') {
+      // Cached or (miss / breaker) composited, never anything else. The cache served characters during the storm;
+      // at the end the thrash breaker may have paused it (2400 swaps = a working set that cannot fit).
+      expect(result.snap.character.cachedCharacters + result.snap.character.compositedCharacters).toBe(result.snap.character.visibleCharacters);
+      expect(maxCached).toBeGreaterThan(0);
+    }
   });
   }
 
@@ -73,13 +81,14 @@ test.describe('residency (Milestone 2)', () => {
     expect((await api(page, (u) => u.auditBindings())).violations).toBe(0);
   });
 
-  test('WebGL context loss: logical state survives, pages re-upload from decoded copies, no network, same pixels', async ({ page }) => {
+  for (const mode of ['LAYERED', 'FULL_CACHE'] as const) {
+  test(`WebGL context loss (${mode}): logical state survives, pages re-upload from decoded copies, no network, same pixels`, async ({ page }) => {
     const assets = await loadCompiledAssets('public/uvce-compiled');
     let pageRequests = 0;
     page.on('request', (r) => {
       if (PAGE_RE.test(new URL(r.url()).pathname)) pageRequests++;
     });
-    await openApp(page, 'scene=parity&test=1&dir=SE');
+    await openApp(page, `scene=parity&test=1&dir=SE&mode=${mode}`);
     const before = await api(page, (u) => u.registryStats());
     const requestsBefore = pageRequests;
     expect(await api(page, (u) => u.loseContext())).toBe(true);
@@ -100,9 +109,15 @@ test.describe('residency (Milestone 2)', () => {
     const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: 'SE', clipId: 'idle', timeMs: 0, pixelsPerUnit: 128 });
     const mismatched = diffImages(actual, expected, 3).mismatched;
     console.log(
-      `[context-loss] resident ${before.byState.RESIDENT} -> 0 -> ${after.byState.RESIDENT}, re-uploads ${after.uploads - before.uploads}, ` +
+      `[context-loss ${mode}] resident ${before.byState.RESIDENT} -> 0 -> ${after.byState.RESIDENT}, re-uploads ${after.uploads - before.uploads}, ` +
         `new page requests ${pageRequests - requestsBefore}, fetches ${before.fetches} -> ${after.fetches}, pixels beyond ±3: ${mismatched}`,
     );
     expect(mismatched).toBe(0);
+    if (mode === 'FULL_CACHE') {
+      // The cached frames died with the context; they were baked again and the frame is drawn from the cache.
+      const c = (await api(page, (u) => u.snapshot())).character;
+      expect(c.cachedCharacters).toBe(c.visibleCharacters);
+    }
   });
+  }
 });

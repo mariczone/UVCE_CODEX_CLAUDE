@@ -203,6 +203,9 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
       stats.textContent = [
         `characters ${c.visibleCharacters} visible / ${snap.count} (culled ${c.culledCharacters}), unique looks ${c.uniqueVisibleAppearances}`,
         `layers drawn ${c.visibleLayers}, pending ${c.pendingLayers}, failed ${c.failedLayers}, pose updates ${c.poseUpdates}${c.mode === 'SHADER' ? `, composited ${c.compositedCharacters}/${c.visibleCharacters} characters` : ''}`,
+        ...(c.mode === 'FULL_CACHE'
+          ? [`frame cache: ${c.cachedCharacters}/${c.visibleCharacters} cached, ${c.compositedCharacters} composited, hit ${c.cacheHitRatio === null ? 'n/a' : `${(c.cacheHitRatio * 100).toFixed(0)}%`}, bakes ${c.frameCacheBakes}/frame, evictions ${c.frameCacheEvictions}, ${(c.compositeEstimatedBytes / 1048576).toFixed(0)} MiB`]
+          : []),
         `draw calls ${snap.drawCalls} (all objects), triangles ${snap.triangles}, textures ${snap.textures}, programs ${snap.programs}`,
         `CPU update   p50 ${fmt(snap.updateCpu.p50)} p95 ${fmt(snap.updateCpu.p95)} ms`,
         `CPU submit   p50 ${fmt(snap.renderSubmitCpu.p50)} p95 ${fmt(snap.renderSubmitCpu.p95)} ms`,

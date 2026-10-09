@@ -109,53 +109,56 @@ test.describe('GPU vs CPU reference parity', () => {
   });
 });
 
-// Milestone 3: the SHADER mode (one composited quad per character) must pass the same oracle as LAYERED.
-test.describe('SHADER mode parity', () => {
-  /** Every visible character must really be composited: a silent LAYERED fallback would make this suite meaningless. */
+// Milestone 3: SHADER (one composited quad per character) and FULL_CACHE (one baked frame per character) must pass
+// the same oracle as LAYERED.
+for (const MODE of ['SHADER', 'FULL_CACHE'] as const) {
+test.describe(`${MODE} mode parity`, () => {
+  /** Every visible character must really use the mode (composited / drawn from the cache): a silent fallback would make this suite meaningless. */
   async function expectAllComposited(page: import('@playwright/test').Page): Promise<void> {
     const c = (await api(page, (u) => u.snapshot())).character;
-    expect(c.compositedCharacters).toBe(c.visibleCharacters);
+    expect(MODE === 'SHADER' ? c.compositedCharacters : c.cachedCharacters).toBe(c.visibleCharacters);
     expect(c.visibleCharacters).toBeGreaterThan(0);
   }
 
   for (const c of CASES) {
-    test(`SHADER ${c.direction} ${c.clipId} t=${c.timeMs}ms matches the reference compositor`, async ({ page }) => {
+    test(`${MODE} ${c.direction} ${c.clipId} t=${c.timeMs}ms matches the reference compositor`, async ({ page }) => {
       const assets = await loadCompiledAssets('public/uvce-compiled');
-      const actual = await capture(page, `scene=parity&test=1&mode=SHADER&dir=${c.direction}&clip=${c.clipId}&t=${c.timeMs}`);
+      const actual = await capture(page, `scene=parity&test=1&mode=${MODE}&dir=${c.direction}&clip=${c.clipId}&t=${c.timeMs}`);
       await expectAllComposited(page);
       const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: c.direction, clipId: c.clipId, timeMs: c.timeMs, pixelsPerUnit: 128 });
       const diff = diffImages(actual, expected, TOLERANCE);
-      logParity(`SHADER ${c.direction} ${c.clipId} t=${c.timeMs}`, actual, expected, diff);
-      if (diff.mismatched > 0) await saveArtifacts(`shader-${c.direction}-${c.clipId}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
+      logParity(`${MODE} ${c.direction} ${c.clipId} t=${c.timeMs}`, actual, expected, diff);
+      if (diff.mismatched > 0) await saveArtifacts(`${MODE}-${c.direction}-${c.clipId}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
       expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
     });
   }
 
   for (const c of VARIANT_CASES_SHARED) {
-    test(`SHADER variant ${c.variant} t=${c.timeMs}ms: painter order and pixels match the reference`, async ({ page }) => {
+    test(`${MODE} variant ${c.variant} t=${c.timeMs}ms: painter order and pixels match the reference`, async ({ page }) => {
       const assets = await loadCompiledAssets('public/uvce-compiled');
-      const actual = await capture(page, `scene=parity&variant=${c.variant}&test=1&mode=SHADER&dir=SE&t=${c.timeMs}`);
+      const actual = await capture(page, `scene=parity&variant=${c.variant}&test=1&mode=${MODE}&dir=SE&t=${c.timeMs}`);
       await expectAllComposited(page);
       expect(await api(page, (u) => u.paintOrder())).toEqual(c.order);
       const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, variant: c.variant, direction: 'SE', clipId: 'idle', timeMs: c.timeMs, pixelsPerUnit: 128 });
       const diff = diffImages(actual, expected, TOLERANCE);
-      logParity(`SHADER variant ${c.variant} t=${c.timeMs}`, actual, expected, diff);
-      if (diff.mismatched > 0) await saveArtifacts(`shader-${c.variant}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
+      logParity(`${MODE} variant ${c.variant} t=${c.timeMs}`, actual, expected, diff);
+      if (diff.mismatched > 0) await saveArtifacts(`${MODE}-${c.variant}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
       expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
     });
   }
 
-  test('SHADER negative control and draw-call reduction: a hidden hat is detected; one draw per character', async ({ page }) => {
+  test(`${MODE} negative control and draw-call reduction: a hidden hat is detected; one draw per character`, async ({ page }) => {
     const assets = await loadCompiledAssets('public/uvce-compiled');
     const expected = buildParityExpected(assets, { width: 1280, height: 720, direction: 'SE', clipId: 'idle', timeMs: 0, pixelsPerUnit: 128 });
-    const noHat = await capture(page, 'scene=parity&test=1&mode=SHADER&dir=SE&hide=hat');
+    const noHat = await capture(page, `scene=parity&test=1&mode=${MODE}&dir=SE&hide=hat`);
     const hatMissing = diffImages(noHat, expected, TOLERANCE).mismatched;
     expect(hatMissing).toBeGreaterThan(500);
     const shaderDraws = (await api(page, (u) => u.snapshot())).drawCalls;
     await capture(page, 'scene=parity&test=1&dir=SE&hide=hat');
     const layeredDraws = (await api(page, (u) => u.snapshot())).drawCalls;
-    console.log(`[parity] SHADER negative control: hat hidden ${hatMissing} px differ; draw calls LAYERED ${layeredDraws} -> SHADER ${shaderDraws}`);
+    console.log(`[parity] ${MODE} negative control: hat hidden ${hatMissing} px differ; draw calls LAYERED ${layeredDraws} -> ${MODE} ${shaderDraws}`);
     // Parity scene: 2 characters (+ wall, box): LAYERED draws every layer, SHADER one quad per character.
     expect(shaderDraws).toBeLessThan(layeredDraws);
   });
 });
+}

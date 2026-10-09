@@ -31,6 +31,13 @@ export interface CrowdOptions {
   seed: number;
   spacing?: number;
   walkerRatio?: number;
+  /**
+   * Distinct NPC outfits (cache-friendliness of the workload). Unset = every NPC draws its own random outfit.
+   * Placement, facing, clip and phase are identical either way; only the outfit comes from a smaller set.
+   */
+  looks?: number;
+  /** All NPCs animate in step (phase offset 0), like a formation; default: random phase per NPC. */
+  syncPhases?: boolean;
 }
 
 export const HERO_ID = 'hero';
@@ -92,6 +99,20 @@ export function generateCrowd(index: ManifestIndex, options: CrowdOptions): Crow
   if (count === 0) return members;
   members.push({ entityId: HERO_ID, x: 0, z: 0, facingYaw: HERO_FACING_YAW, clipId: 'idle', phaseOffsetMs: 0, appearance: heroAppearance(), patrol: null });
   const cells = gridCells(count - 1);
+  const randomSlots = (rng: ReturnType<typeof createPrng>): AppearanceDefinition['slots'] => {
+    const slots: AppearanceDefinition['slots'] = { body: { itemId: body }, head: { itemId: head } };
+    for (const slot of ['hair', 'hat', 'armor', 'weapon'] as const) {
+      const choice = rng.pick(pool[slot]);
+      if (choice) slots[slot] = { itemId: choice };
+    }
+    return slots;
+  };
+  const lookCount = options.looks === undefined ? 0 : Math.max(1, Math.floor(options.looks));
+  const looks: AppearanceDefinition[] = Array.from({ length: lookCount }, (_, k) => ({
+    schemaVersion: APPEARANCE_SCHEMA_V2,
+    rigProfileId: 'humanoid_2d_v1',
+    slots: randomSlots(createPrng((options.seed * 0x27d4eb2d + k * 0x165667b1 + 0x3c6ef372) >>> 0)),
+  }));
   for (let i = 1; i < count; i++) {
     // Independent stream per member => member i does not depend on the crowd size.
     const rng = createPrng((options.seed * 0x9e3779b1 + i * 0x85ebca6b) >>> 0);
@@ -100,19 +121,16 @@ export function generateCrowd(index: ManifestIndex, options: CrowdOptions): Crow
     const z = cell.gz * spacing + rng.range(-0.3, 0.3) * spacing;
     const facingYaw = normalizeAngle(rng.range(0, Math.PI * 2));
     const walker = rng.next() < walkerRatio;
-    const slots: AppearanceDefinition['slots'] = { body: { itemId: body }, head: { itemId: head } };
-    for (const slot of ['hair', 'hat', 'armor', 'weapon'] as const) {
-      const choice = rng.pick(pool[slot]);
-      if (choice) slots[slot] = { itemId: choice };
-    }
+    const slots = randomSlots(rng); // always drawn, so the rest of this member's stream is unchanged
+    const phase = rng.int(0, 1199); // drawn even when synced, same reason
     members.push({
       entityId: `npc-${String(i).padStart(4, '0')}`,
       x,
       z,
       facingYaw,
       clipId: walker ? 'walk' : 'idle',
-      phaseOffsetMs: rng.int(0, 1199),
-      appearance: { schemaVersion: APPEARANCE_SCHEMA_V2, rigProfileId: 'humanoid_2d_v1', slots },
+      phaseOffsetMs: options.syncPhases ? 0 : phase,
+      appearance: lookCount > 0 ? (looks[(i - 1) % lookCount] as AppearanceDefinition) : { schemaVersion: APPEARANCE_SCHEMA_V2, rigProfileId: 'humanoid_2d_v1', slots },
       patrol: walker ? { yaw: facingYaw, length: rng.range(0.8, 2.2), speed: 0.9, offsetS: rng.range(0, 5) } : null,
     });
   }
