@@ -11,7 +11,7 @@ Machine: RTX 3070 / Ryzen 5 5600, Windows 11.
 | 4 | Toggle modes, benchmark the same stress matrix, compare cost and fidelity | **Done for all three modes** on one GPU ([matrix](benchmark-results/gpu/2026-10-09-rtx3070-pending-runs/README.md)); first SHADER run ([results](benchmark-results/gpu/2026-10-09-rtx3070-m3/README.md)); the UI toggle is the URL parameter |
 | 1 | `PARTIAL_CACHE` for safe non-interleaving groups | Not started |
 | 2 | `FULL_CACHE` with composite page allocator, refcount and budget | **Done**: `mode=FULL_CACHE`, render-target cell cache, generations, LRU, admission control, thrash breaker ([ADR-14](UVCE_ARCHITECTURE_DECISIONS.md)); GPU matrix done |
-| 5 | Adaptive render planner with hysteresis | Not started (the renderer can already choose per character) |
+| 5 | Adaptive render planner with hysteresis | **Done, opt-in**: `mode=AUTO` ([ADR-15](UVCE_ARCHITECTURE_DECISIONS.md)). Measured: wins only the formation crowd (−4 %), 4–15 % slower elsewhere on this CPU-bound GPU ([results](benchmark-results/gpu/2026-10-09-rtx3070-auto/README.md)) |
 
 The blueprint's M3 exit condition is that at least two modes work on the same inputs with screenshot parity and a
 benchmark. LAYERED and SHADER meet it; FULL_CACHE passes the same parity suite, and its benchmark is pending. The
@@ -89,8 +89,8 @@ Recorded 2026-10-09 at the owner's request: postponed, not dropped. Each run nee
 
 1. Run `mode=SHADER` on a second, weaker GPU with the same commands (`LOCAL_TEST_CHECKLIST.md` §2 plus
    `--query "&mode=SHADER"`) and decide the default.
-2. Owner decision: make SHADER the default (it won or tied every workload at 1080p and 4K; LAYERED stays the fallback).
-3. An adaptive planner (per character: projected size, swap rate, cache hit chance, measured cost; with hysteresis).
-   The FULL_CACHE breaker is a first, cache-local version of that hysteresis.
+2. Done: SHADER is the default (owner decision, commit `b59eaee`).
+3. Done: adaptive planner (`mode=AUTO`), opt-in. Next for it: a GPU-bound signal, so it only reaches for the cache
+   where fill rate is the limit; then measure on a fill-limited GPU (iGPU).
 4. `PARTIAL_CACHE` only for layer groups that never interleave across directions (lowest priority: FULL_CACHE and
    SHADER already cover the cases a partial cache would).

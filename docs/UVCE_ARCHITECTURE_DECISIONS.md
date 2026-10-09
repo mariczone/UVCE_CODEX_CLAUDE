@@ -314,5 +314,7 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
 - **Proof:** unit tests for promotion, hysteresis, capacity, forgetting, renderer integration and context loss. E2e:
   in the parity scene both looks are promoted and the frame stays pixel-exact against the CPU reference; AUTO swap
   storm with 0 binding violations. Mutations (hysteresis off, capacity check off) are caught.
-- **Status:** opt-in (`mode=AUTO`) until its benchmark shows it at least matches SHADER (results in
-  `docs/benchmark-results/gpu/`).
+- **Status:** opt-in (`mode=AUTO`). On the RTX 3070 (CPU-bound) it wins only the formation crowd (−4 %) and is
+  4–15 % slower elsewhere: FULL_CACHE saves GPU fill, not draw calls, and the planner's bookkeeping costs CPU
+  (`docs/benchmark-results/gpu/2026-10-09-rtx3070-auto/`). Next: gate promotion on a GPU-bound signal and measure on a
+  fill-limited GPU.
