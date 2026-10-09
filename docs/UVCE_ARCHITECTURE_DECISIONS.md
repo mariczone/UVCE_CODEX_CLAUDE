@@ -1,7 +1,7 @@
 # UVCE Architecture Decisions (ADRs) — Milestones 0–2
 
 Short decision records for the POC. Each lists the decision, why, and what would make us revisit it.
-Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0–M2**; paragraphs marked
+Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0–M2** (ADR-13: M3, in progress); paragraphs marked
 **(M1)** / **(M2)** record what those milestones changed.
 
 ## ADR-01 Standalone single-package POC next to the starter pack
@@ -227,3 +227,26 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   @playwright/test 1.56.1 (matches the pre-installed Chromium 141 build 1194; newer Playwright needs
   `pnpm exec playwright install chromium`), Node ≥ 22.18 (native TypeScript type stripping runs the tools;
   `.nvmrc` = 22.22.0), pnpm 10.28.0.
+
+## ADR-13 SHADER render mode: one composited quad per character (M3)
+
+- **Decision:** the first Milestone 3 mode is `SHADER` (blueprint mode B), chosen over PARTIAL/FULL_CACHE because the
+  RTX 3070 baseline showed the frame is bound by CPU submission (~7 draws per character), not by fill or memory.
+- **How:** `composite-material.ts` draws one quad per character covering the union of its layer rectangles. The
+  fragment shader samples up to 8 layers (separate sampler uniforms; GLSL ES 3.00 forbids dynamic indexing of
+  sampler arrays) and composites back to front with premultiplied over (`acc = s + (1 - s.a) * acc`), the same
+  operation as the LAYERED blend state. Same vertex transform, foot depth and bias as LAYERED, so 3D occlusion and
+  character painter order are unchanged; transparent world objects still sort between characters. Layer masks are
+  half-open like the rasterizer's top-left rule. Sampling is unconditional inside uniform branches, so mip
+  derivatives are well defined.
+- **Fallback per character, per pose:** a FAILED page (the magenta placeholder is a LAYERED feature) or more than 8
+  layers draws that pose with LAYERED quads. Devices with fewer than 8 texture units get LAYERED with the reason in
+  the panel. The generation audit covers composite slots; a stale slot hides the whole quad.
+- **Proof:** all parity scenes pass in SHADER mode (0 px beyond ±3, max delta 1) with a check that every character
+  was really composited; a SHADER swap storm (100 characters, 1 MiB budget) shows 0 binding violations. Mutation
+  checks (reversed composite order, no FAILED fallback, composite audit disabled) are each caught.
+- **Result (RTX 3070):** draw calls 2,108 → 606 and CPU per frame 10.5 → 4.3 ms at 300 characters, with GPU raster
+  +0.7 ms (`docs/benchmark-results/gpu/2026-10-09-rtx3070-m3/`).
+- **Status:** behind `mode=SHADER`, LAYERED stays the default until a weaker GPU (iGPU) confirms the trade-off. The
+  renderer is ready for a planner to choose per character. PARTIAL_CACHE, FULL_CACHE and the adaptive planner are
+  not built yet.

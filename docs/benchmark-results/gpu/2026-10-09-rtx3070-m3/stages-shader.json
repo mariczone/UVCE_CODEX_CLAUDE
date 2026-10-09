@@ -1,0 +1,113 @@
+{
+  "kind": "uvce-stage-timing",
+  "date": "2026-10-09T11:37:26.060Z",
+  "glRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "chromiumArgs": [],
+  "query": "&mode=SHADER",
+  "compare": "",
+  "counts": [
+    1,
+    20,
+    100,
+    300
+  ],
+  "runs": 3,
+  "rows": [
+    {
+      "build": "current",
+      "count": 1,
+      "mode": "full",
+      "drawCalls": 9,
+      "visibleLayers": 8,
+      "pumpP50Ms": 0.015,
+      "worldP50Ms": 0.045,
+      "prepareP50Ms": 0.06,
+      "submitP50Ms": 0.23,
+      "rasterP50Ms": 0.825
+    },
+    {
+      "build": "current",
+      "count": 1,
+      "mode": "scissor1px",
+      "drawCalls": 9,
+      "visibleLayers": 8,
+      "pumpP50Ms": 0.015,
+      "worldP50Ms": 0.04,
+      "prepareP50Ms": 0.06,
+      "submitP50Ms": 0.22,
+      "rasterP50Ms": 0.743
+    },
+    {
+      "build": "current",
+      "count": 20,
+      "mode": "full",
+      "drawCalls": 47,
+      "visibleLayers": 123,
+      "pumpP50Ms": 0.01,
+      "worldP50Ms": 0.035,
+      "prepareP50Ms": 0.1,
+      "submitP50Ms": 0.313,
+      "rasterP50Ms": 0.787
+    },
+    {
+      "build": "current",
+      "count": 20,
+      "mode": "scissor1px",
+      "drawCalls": 47,
+      "visibleLayers": 123,
+      "pumpP50Ms": 0.01,
+      "worldP50Ms": 0.03,
+      "prepareP50Ms": 0.095,
+      "submitP50Ms": 0.31,
+      "rasterP50Ms": 0.67
+    },
+    {
+      "build": "current",
+      "count": 100,
+      "mode": "full",
+      "drawCalls": 207,
+      "visibleLayers": 611,
+      "pumpP50Ms": 0.015,
+      "worldP50Ms": 0.055,
+      "prepareP50Ms": 0.34,
+      "submitP50Ms": 1.228,
+      "rasterP50Ms": 1.23
+    },
+    {
+      "build": "current",
+      "count": 100,
+      "mode": "scissor1px",
+      "drawCalls": 207,
+      "visibleLayers": 611,
+      "pumpP50Ms": 0.015,
+      "worldP50Ms": 0.06,
+      "prepareP50Ms": 0.335,
+      "submitP50Ms": 1.18,
+      "rasterP50Ms": 1.137
+    },
+    {
+      "build": "current",
+      "count": 300,
+      "mode": "full",
+      "drawCalls": 606,
+      "visibleLayers": 1803,
+      "pumpP50Ms": 0.015,
+      "worldP50Ms": 0.07,
+      "prepareP50Ms": 0.71,
+      "submitP50Ms": 2.637,
+      "rasterP50Ms": 1.433
+    },
+    {
+      "build": "current",
+      "count": 300,
+      "mode": "scissor1px",
+      "drawCalls": 606,
+      "visibleLayers": 1803,
+      "pumpP50Ms": 0.01,
+      "worldP50Ms": 0.06,
+      "prepareP50Ms": 0.613,
+      "submitP50Ms": 2.388,
+      "rasterP50Ms": 1.35
+    }
+  ]
+}

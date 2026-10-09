@@ -11,6 +11,7 @@ art.**
 | Read | What |
 |---|---|
 | [`docs/LOCAL_TEST_CHECKLIST.md`](docs/LOCAL_TEST_CHECKLIST.md) | **Run this on your own machine:** every test, the GPU benchmark and a manual browser pass, in one go |
+| [`docs/UVCE_MILESTONE_3_PROGRESS.md`](docs/UVCE_MILESTONE_3_PROGRESS.md) | Milestone 3 (in progress): SHADER mode, parity, LAYERED vs SHADER on an RTX 3070 |
 | [`docs/UVCE_MILESTONE_1_2_REPORT.md`](docs/UVCE_MILESTONE_1_2_REPORT.md) | Milestones 1–2: what was built, verified output, performance vs M0, limitations, next steps |
 | [`docs/UVCE_MILESTONE_0_REPORT.md`](docs/UVCE_MILESTONE_0_REPORT.md) | Milestone 0: what was built, verified output, limitations |
 | [`docs/UVCE_ARCHITECTURE_DECISIONS.md`](docs/UVCE_ARCHITECTURE_DECISIONS.md) | ADRs: coordinates, directions, sorting/depth, alpha and mips, schemas, hashing, residency |
@@ -49,8 +50,8 @@ URL parameters: `count=20`, `seed=42`, `dir=SE`, `clip=walk`, `t=350` (ms), `pau
 `weapon=none`, `hide=weapon,hat`, `debug=1`, `test=1` (deterministic: paused clock, no MSAA), `scene=parity` /
 `scene=studio` (pixel-exact orthographic camera), `variant=crossing|arch|glass` (with `scene=parity`),
 `budgetMiB=1` (source page budget, default 256 — small values force evictions), `mips=0` (no mip chains, for A/B),
-`filter=nearest|linear`, `bench=1` (panel off, for measurements), `mode=SHADER` (falls back to LAYERED with the
-reason shown — only LAYERED is implemented).
+`filter=nearest|linear`, `bench=1` (panel off, for measurements), `mode=SHADER` (Milestone 3: one composited quad
+per character; LAYERED stays the default; PARTIAL_CACHE / FULL_CACHE fall back to LAYERED with the reason shown).
 
 ---
 
