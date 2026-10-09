@@ -1,0 +1,18 @@
+{
+  "id": "humanoid_2d_v1",
+  "version": "1",
+  "canonicalCanvas": { "width": 256, "height": 256 },
+  "footPivot": { "x": 128, "y": 228 },
+  "directionOrder": ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
+  "socketsByDirection": {
+    "N":  { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } },
+    "NE": { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } },
+    "E":  { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } },
+    "SE": { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } },
+    "S":  { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } },
+    "SW": { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } },
+    "W":  { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } },
+    "NW": { "head_top": { "x": 128, "y": 42 }, "right_hand": { "x": 98, "y": 137 }, "left_hand": { "x": 158, "y": 137 }, "back": { "x": 128, "y": 104 } }
+  },
+  "note": "Placeholder identical socket coordinates for demo ONLY. Real art must provide direction-specific positions verified against rendered sprites."
+}

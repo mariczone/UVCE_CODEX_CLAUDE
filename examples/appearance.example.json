@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "uvce-appearance-v1",
+  "entityId": "poc-player-0001",
+  "rigProfileId": "humanoid_2d_v1",
+  "body": { "id": "body_novice", "version": "1", "contentHash": "demo-body-replace-at-build" },
+  "head": { "id": "head_novice", "version": "1", "contentHash": "demo-head-replace-at-build" },
+  "slots": {
+    "hair_back": { "asset": { "id": "hair_01_back", "version": "1", "contentHash": "demo-hairback-replace-at-build" } },
+    "hair_front": { "asset": { "id": "hair_01_front", "version": "1", "contentHash": "demo-hairfront-replace-at-build" } },
+    "hat": { "asset": { "id": "hat_01", "version": "1", "contentHash": "demo-hat-replace-at-build" } },
+    "armor": { "asset": { "id": "armor_01", "version": "1", "contentHash": "demo-armor-replace-at-build" }, "dye": { "primary": "#467F8E" } },
+    "weapon": { "asset": { "id": "sword_01", "version": "1", "contentHash": "demo-sword-replace-at-build" } }
+  },
+  "animation": { "clipId": "idle", "direction": "SE", "elapsedMs": 0, "speed": 1 },
+  "footPivotPx": { "x": 128, "y": 228 }
+}

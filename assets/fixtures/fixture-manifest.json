@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "uvce-fixture-v1",
+  "generatedBy": "tools/generate_fixture_assets.py",
+  "artStatus": "synthetic-placeholder-not-for-production",
+  "canonicalCanvas": {
+    "width": 256,
+    "height": 256
+  },
+  "footPivot": {
+    "x": 128,
+    "y": 228
+  },
+  "directions": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+  ],
+  "clips": {
+    "idle": {
+      "fps": 8,
+      "frameCount": 8,
+      "loop": true
+    }
+  },
+  "assetIds": [
+    "body",
+    "head",
+    "hair_back_01",
+    "hair_front_01",
+    "hair_back_02",
+    "hair_front_02",
+    "armor_01",
+    "armor_02",
+    "armor_03",
+    "hat_01",
+    "hat_02",
+    "hat_03",
+    "weapon_01",
+    "weapon_02",
+    "weapon_03"
+  ],
+  "assetPathTemplate": "{assetId}/{direction}/frame_{frame:03}.png",
+  "drawOrderByDirection": {
+    "N": [
+      "hair_back_01",
+      "weapon_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01"
+    ],
+    "NE": [
+      "hair_back_01",
+      "weapon_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01"
+    ],
+    "E": [
+      "hair_back_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01",
+      "weapon_01"
+    ],
+    "SE": [
+      "hair_back_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01",
+      "weapon_01"
+    ],
+    "S": [
+      "hair_back_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01",
+      "weapon_01"
+    ],
+    "SW": [
+      "hair_back_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01",
+      "weapon_01"
+    ],
+    "W": [
+      "hair_back_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01",
+      "weapon_01"
+    ],
+    "NW": [
+      "hair_back_01",
+      "weapon_01",
+      "body",
+      "armor_01",
+      "head",
+      "hair_front_01",
+      "hat_01"
+    ]
+  },
+  "notice": "All socket coordinates/artwork are synthetic. Validate real directional rigs separately."
+}
