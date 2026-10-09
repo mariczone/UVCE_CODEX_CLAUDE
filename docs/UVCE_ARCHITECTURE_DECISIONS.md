@@ -314,7 +314,15 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
 - **Proof:** unit tests for promotion, hysteresis, capacity, forgetting, renderer integration and context loss. E2e:
   in the parity scene both looks are promoted and the frame stays pixel-exact against the CPU reference; AUTO swap
   storm with 0 binding violations. Mutations (hysteresis off, capacity check off) are caught.
-- **Status:** opt-in (`mode=AUTO`). On the RTX 3070 (CPU-bound) it wins only the formation crowd (−4 %) and is
-  4–15 % slower elsewhere: FULL_CACHE saves GPU fill, not draw calls, and the planner's bookkeeping costs CPU
-  (`docs/benchmark-results/gpu/2026-10-09-rtx3070-auto/`). Next: gate promotion on a GPU-bound signal and measure on a
-  fill-limited GPU.
+- **GPU-pressure gate (added after the first benchmark):** without a gate the planner was 4–15 % slower than SHADER
+  on the CPU-bound RTX 3070 (`docs/benchmark-results/gpu/2026-10-09-rtx3070-auto/`), because FULL_CACHE saves GPU
+  fill, not draw calls. `src/uvce/render/pressure.ts` now derives GPU pressure from frame timing (timer queries were
+  too noisy): pressure means the median frame interval is above 1.2× the learned vsync period while median CPU time
+  stays below 75 % of the interval. Groups are promoted only under pressure; demotion needs none.
+  `plannerPressure=on|off` forces the signal for tests and A/B runs.
+- **Bookkeeping cost:** `request` counts per character per frame through a group reference returned by `enter()`;
+  `enter`/`leave` run only when a character's frame changes. The remaining cost without promotions is ~0.13–0.19 ms
+  per frame at 300 characters (profiled).
+- **Status:** opt-in (`mode=AUTO`). With the gate, AUTO matches SHADER within noise on the RTX 3070 (ABBA order: −4 % to
+  +7 %, overlapping ranges, nothing promoted: `docs/benchmark-results/gpu/2026-10-09-rtx3070-auto-gated/`). It becomes
+  a default candidate once a fill-limited device shows real pressure and a better frame interval with the planner.
