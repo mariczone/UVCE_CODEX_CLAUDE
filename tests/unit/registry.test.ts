@@ -12,7 +12,7 @@ interface Gpu {
 }
 
 /** Registry with fake network/decode/GPU ports, a manual clock and explicit frame stepping. */
-function harness(index: ManifestIndex, options: Partial<RegistryOptions> = {}) {
+function harness(index: ManifestIndex, options: Partial<RegistryOptions> = {}, failUpload: ReadonlySet<string> = new Set()) {
   const jobs: { pageId: string; signal: AbortSignal; resolve(): void; fail(e: unknown): void }[] = [];
   const fetchLog: string[] = [];
   const released: string[] = [];
@@ -31,6 +31,7 @@ function harness(index: ManifestIndex, options: Partial<RegistryOptions> = {}) {
   let uploadCount = 0;
   const uploader: PageUploader<Decoded, Gpu> = {
     upload: (page, d) => {
+      if (failUpload.has(page.id)) throw new Error('GL_OUT_OF_MEMORY');
       uploads.push(page.id);
       return { id: d.id, upload: ++uploadCount };
     },
@@ -241,6 +242,53 @@ describe('source asset registry v2', () => {
     await h.load();
     expect(h.reg.pageState(HAT1)).toBe('RESIDENT');
     expect(h.reg.stats().reloads).toBe(1);
+  });
+
+  it('LRU order comes from pins: the page released first is evicted first, without per-frame touches', async () => {
+    const { index } = await compiledAssets();
+    const h = harness(index, { budgetBytes: 3000, lowWaterRatio: 1 });
+    for (const id of ['hat_01', 'hat_02', 'hat_03']) h.reg.acquireItem(id);
+    await h.load();
+    h.reg.releaseItem('hat_02'); // released at frame 2
+    h.step();
+    h.step();
+    h.reg.releaseItem('hat_01'); // released two frames later: more recently used
+    h.reg.acquireItem('weapon_01');
+    await h.load(); // 4000 > 3000: evict down to <= 3000 => exactly one unpinned page goes, the older one
+    expect(h.disposed).toEqual([HAT2]);
+    expect(h.reg.pageState(HAT1)).toBe('RESIDENT');
+  });
+
+  it('prefetches are opportunistic: dropped (not fetched) when they would not fit under the low watermark', async () => {
+    const { index } = await compiledAssets();
+    const h = harness(index, { budgetBytes: 4000, lowWaterRatio: 0.75 }); // low watermark 3000
+    for (const id of ['hat_01', 'hat_02']) h.reg.acquireItem(id);
+    h.reg.prefetchItem('hat_03'); // 2000 pinned + 1000 = 3000: fits
+    await h.load();
+    expect(h.reg.pageState(HAT3)).toBe('RESIDENT');
+    h.reg.prefetchItem('weapon_01'); // 3000 + 1000 > 3000: dropped
+    h.step();
+    expect(h.fetchLog).not.toContain('page-weapon_01-0');
+    expect(h.reg.pageState('page-weapon_01-0')).toBe('UNRESOLVED');
+    expect(h.reg.stats().prefetchSkipped).toBe(1);
+    expect(h.reg.isIdle()).toBe(true); // a dropped prefetch never blocks "idle"
+    h.reg.acquireItem('weapon_01'); // demand is never dropped, even over budget
+    await h.load();
+    expect(h.reg.pageState('page-weapon_01-0')).toBe('RESIDENT');
+    expect(h.reg.stats().evictions).toBe(0); // resident 4000 == budget: nothing to evict yet
+  });
+
+  it('a failed upload bumps the revision so renderers stop waiting for the page', async () => {
+    const { index } = await compiledAssets();
+    const h = harness(index, {}, new Set([HAT1]));
+    h.reg.acquireItem('hat_01');
+    h.step();
+    await h.settle();
+    const before = h.reg.revision;
+    h.step();
+    expect(h.reg.pageState(HAT1)).toBe('FAILED');
+    expect(h.reg.revision).toBeGreaterThan(before);
+    expect(h.reg.isIdle()).toBe(true);
   });
 
   it('handles are generation-checked: stale after eviction even when the slot is reused (ABA)', async () => {

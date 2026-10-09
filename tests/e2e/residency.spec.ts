@@ -28,6 +28,12 @@ test.describe('residency (Milestone 2)', () => {
     }
     await api(page, (u) => u.waitForIdle());
     const result = await api(page, (u) => ({ stats: u.registryStats(), audit: u.auditBindings(), snap: u.snapshot(), pages: u.pageStatuses() }));
+    const st = result.stats;
+    console.log(
+      `[storm] 2400 slot changes: fetches ${st.fetches} (reloads ${st.reloads}), evictions ${st.evictions}, cancelled ${st.cancelled}, ` +
+        `prefetch skipped ${st.prefetchSkipped}, stale handle hits ${st.staleResolves}, visible layers ${result.audit.visibleLayers}, ` +
+        `binding violations ${maxViolations}, resident ${(st.residentBytes / 1048576).toFixed(2)} MiB = pinned ${(st.pinnedBytes / 1048576).toFixed(2)} MiB`,
+    );
     expect(maxViolations).toBe(0);
     expect(result.audit.violations).toBe(0);
     expect(result.audit.visibleLayers).toBeGreaterThan(400);

@@ -1,6 +1,6 @@
 /**
  * Baseline benchmark for the LAYERED renderer (Milestone 0/1 baseline, not an optimisation claim).
- *   pnpm build && pnpm bench:baseline [--counts 1,20,100,300] [--runs 3] [--gpu] [--headed] [--out dir]
+ *   pnpm build && pnpm bench:baseline [--counts 1,20,100,300] [--runs 3] [--gpu] [--headed] [--out dir] [--query '&mips=0']
  * Default launches Chromium with SwiftShader (software GL) so it runs in GPU-less containers; pass --gpu on a
  * workstation to use the real GPU. All numbers are device-specific; the environment is recorded with them.
  */
@@ -8,6 +8,8 @@ import { execSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { cpus, platform, release, totalmem } from 'node:os';
 import type { Page } from '@playwright/test';
+import type { RegistryStats } from '../../src/uvce/assets/source-registry.ts';
+import type { CharacterRenderMetrics } from '../../src/uvce/render/contracts.ts';
 import { SWIFTSHADER_ARGS, launchChromium, startPreviewServer } from './browser.ts';
 
 interface Summary {
@@ -29,8 +31,8 @@ interface Snapshot {
   triangles: number;
   textures: number;
   programs: number;
-  character: { visibleCharacters: number; visibleLayers: number; culledCharacters: number; uniqueVisibleAppearances: number };
-  registry: { resident: number; loads: number; residentBytesRGBA8: number; failed: number };
+  character: CharacterRenderMetrics;
+  registry: RegistryStats;
 }
 
 const args = process.argv.slice(2);
@@ -48,6 +50,8 @@ const seed = Number(opt('--seed', '20261009'));
 const swiftshader = !args.includes('--gpu');
 const date = new Date().toISOString().slice(0, 10);
 const outDir = opt('--out', `docs/benchmark-results/baseline/${date}`);
+/** Extra URL parameters for A/B runs, e.g. '&mips=0' (recorded in the summary). */
+const extraQuery = opt('--query', '');
 
 const median = (v: number[]): number => {
   const s = [...v].sort((a, b) => a - b);
@@ -63,9 +67,9 @@ interface Transfer {
   decodedBytes: number;
 }
 
-async function runOnce(page: Page, base: string, count: number): Promise<{ snap: Snapshot; readyMs: number; transfer: Transfer }> {
+async function runOnce(page: Page, base: string, count: number): Promise<{ snap: Snapshot; readyMs: number; transfer: Transfer; residentPageIds: string[] }> {
   const t0 = Date.now();
-  await page.goto(`${base}/?bench=1&count=${count}&seed=${seed}`);
+  await page.goto(`${base}/?bench=1&count=${count}&seed=${seed}${extraQuery}`);
   await page.waitForFunction(() => (window as unknown as { __UVCE__?: { ready?: boolean } }).__UVCE__?.ready === true, null, { timeout: 120_000 });
   const readyMs = Date.now() - t0;
   await page.waitForTimeout(warmupMs);
@@ -73,7 +77,13 @@ async function runOnce(page: Page, base: string, count: number): Promise<{ snap:
   await page.waitForTimeout(measureMs);
   const snap = await page.evaluate(() => (window as unknown as { __UVCE__: { snapshot(): unknown } }).__UVCE__.snapshot());
   const transfer = await page.evaluate(() => (window as unknown as { __UVCE__: { assetTransfer(): unknown } }).__UVCE__.assetTransfer());
-  return { snap: snap as Snapshot, readyMs, transfer: transfer as Transfer };
+  const residentPageIds = await page.evaluate(() =>
+    (window as unknown as { __UVCE__: { pageStatuses(): { pageId: string; state: string }[] } }).__UVCE__
+      .pageStatuses()
+      .filter((s) => s.state === 'RESIDENT')
+      .map((s) => s.pageId),
+  );
+  return { snap: snap as Snapshot, readyMs, transfer: transfer as Transfer, residentPageIds };
 }
 
 const git = (cmd: string): string => {
@@ -91,10 +101,16 @@ const server = await startPreviewServer(4177);
 const browser = await launchChromium({ swiftshader, headed: args.includes('--headed') });
 try {
   await mkdir(outDir, { recursive: true });
+  const manifest = JSON.parse(await readFile('public/uvce-compiled/manifest.json', 'utf8')) as {
+    manifestVersion: string;
+    stats: unknown;
+    pages: { id: string; width: number; height: number }[];
+  };
+  const level0Bytes = new Map(manifest.pages.map((p) => [p.id, p.width * p.height * 4]));
   const scenarios: Record<string, unknown>[] = [];
   let env: Record<string, unknown> = {};
   for (const count of counts) {
-    const perRun: { snap: Snapshot; readyMs: number; transfer: Transfer }[] = [];
+    const perRun: Awaited<ReturnType<typeof runOnce>>[] = [];
     for (let run = 0; run < runs; run++) {
       const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
       const page = await context.newPage();
@@ -123,16 +139,16 @@ try {
       gpuTimerQueryMs: perRun.every((r) => r.snap.gpuTimer.samples > 0)
         ? { p50: pick((r) => r.snap.gpuTimer.p50), p95: pick((r) => r.snap.gpuTimer.p95), samplesPerRun: perRun.map((r) => r.snap.gpuTimer.samples) }
         : null,
-      residentPages: pick((r) => r.snap.registry.resident),
-      pageLoads: pick((r) => r.snap.registry.loads),
-      sourceRGBA8MiB: pick((r) => r.snap.registry.residentBytesRGBA8 / 1048576),
+      residentPages: pick((r) => r.snap.registry.byState.RESIDENT),
+      pageLoads: pick((r) => r.snap.registry.fetches),
+      sourceRGBA8MiB: pick((r) => r.residentPageIds.reduce((sum, id) => sum + (level0Bytes.get(id) ?? 0), 0) / 1048576),
+      residentGpuEstimateMiB: pick((r) => r.snap.registry.residentBytes / 1048576),
       assetRequests: pick((r) => r.transfer.requests),
       pageRequests: pick((r) => r.transfer.pageRequests),
       downloadedAssetKiB: pick((r) => r.transfer.encodedBytes / 1024),
       timeToReadyMs: pick((r) => r.readyMs),
     });
   }
-  const manifest = JSON.parse(await readFile('public/uvce-compiled/manifest.json', 'utf8')) as { manifestVersion: string; stats: unknown };
   const summary = {
     kind: 'uvce-baseline-benchmark',
     renderMode: 'LAYERED',
@@ -146,6 +162,7 @@ try {
       measureMs,
       viewport: { width, height, deviceScaleFactor: 1 },
       seed,
+      extraQuery,
       chromiumArgs: swiftshader ? SWIFTSHADER_ARGS : [],
       scene: 'stage scene, perspective camera framed per count, animation playing, MSAA on, overlay and side panel off (bench=1, canvas = full viewport)',
       aggregation: 'per run: nearest-rank percentiles over all frames in the window; reported: median across runs',
@@ -167,15 +184,15 @@ try {
       'CPU update = character prepare (resolve/cull/sort) + world update; CPU submit = three.js render() call on the main thread (command encoding, not GPU execution).',
       'CPU submit can include command-buffer back-pressure when the (software) GPU process falls behind.',
       'Draw calls include world props and one ground-shadow decal per visible character.',
-      'Byte figures are owner-calculated RGBA8 estimates of resident source pages, not measured VRAM.',
+      'Byte figures are owner-calculated estimates, not measured VRAM: sourceRGBA8MiB = level 0 of resident pages; residentGpuEstimateMiB includes mip chains.',
     ],
   };
   await writeFile(`${outDir}/summary.json`, `${JSON.stringify(summary, null, 2)}\n`);
-  const header = 'count,visible_characters,visible_layers,draw_calls,cpu_update_p50_ms,cpu_update_p95_ms,cpu_submit_p50_ms,cpu_submit_p95_ms,cpu_total_p50_ms,cpu_total_p95_ms,cpu_total_p99_ms,raf_interval_p50_ms,raf_interval_p95_ms,gpu_timer_p50_ms,resident_pages,page_requests,source_rgba8_mib,downloaded_kib,time_to_ready_ms';
+  const header = 'count,visible_characters,visible_layers,draw_calls,cpu_update_p50_ms,cpu_update_p95_ms,cpu_submit_p50_ms,cpu_submit_p95_ms,cpu_total_p50_ms,cpu_total_p95_ms,cpu_total_p99_ms,raf_interval_p50_ms,raf_interval_p95_ms,gpu_timer_p50_ms,resident_pages,page_requests,source_rgba8_mib,downloaded_kib,time_to_ready_ms,resident_gpu_estimate_mib';
   const rows = scenarios.map((s) => {
     const g = s as Record<string, Record<string, number | null> | number | null>;
     const o = (k: string, f: string): string => String(((g[k] as Record<string, number | null> | null) ?? {})[f] ?? '');
-    return [g.count, g.visibleCharacters, g.visibleLayers, g.drawCalls, o('cpuUpdateMs', 'p50'), o('cpuUpdateMs', 'p95'), o('cpuRenderSubmitMs', 'p50'), o('cpuRenderSubmitMs', 'p95'), o('cpuTotalMs', 'p50'), o('cpuTotalMs', 'p95'), o('cpuTotalMs', 'p99'), o('rafIntervalMs', 'p50'), o('rafIntervalMs', 'p95'), o('gpuTimerQueryMs', 'p50'), g.residentPages, g.pageRequests, g.sourceRGBA8MiB, g.downloadedAssetKiB, g.timeToReadyMs].join(',');
+    return [g.count, g.visibleCharacters, g.visibleLayers, g.drawCalls, o('cpuUpdateMs', 'p50'), o('cpuUpdateMs', 'p95'), o('cpuRenderSubmitMs', 'p50'), o('cpuRenderSubmitMs', 'p95'), o('cpuTotalMs', 'p50'), o('cpuTotalMs', 'p95'), o('cpuTotalMs', 'p99'), o('rafIntervalMs', 'p50'), o('rafIntervalMs', 'p95'), o('gpuTimerQueryMs', 'p50'), g.residentPages, g.pageRequests, g.sourceRGBA8MiB, g.downloadedAssetKiB, g.timeToReadyMs, g.residentGpuEstimateMiB].join(',');
   });
   await writeFile(`${outDir}/summary.csv`, `${header}\n${rows.join('\n')}\n`);
   console.log(`[bench] wrote ${outDir}/summary.json, summary.csv and ${counts.length} screenshots`);

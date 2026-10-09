@@ -10,7 +10,8 @@
  * - Pins: visible characters acquire their items (refcount per page). Pinned pages are never evicted.
  * - Budget: when resident GPU bytes exceed `budgetBytes`, unpinned pages are evicted LRU-first down to
  *   `lowWaterRatio * budgetBytes` (hysteresis). If pinned pages alone exceed the budget, nothing pinned is
- *   evicted and `overBudget` is reported (correctness first).
+ *   evicted and `overBudget` is reported (correctness first). Prefetches are opportunistic: one that would
+ *   push resident + in-flight bytes above the low watermark is dropped instead of fetched (no fetch/evict churn).
  * - Handles: a RESIDENT page owns a slot; `PageHandle = { index, generation }`. Losing GPU residency
  *   (eviction, context loss) frees the slot and bumps its generation, so an old handle can never resolve to
  *   another page that later reuses the slot (ABA guard).
@@ -112,11 +113,20 @@ export interface RegistryStats {
   contextLosses: number;
   /** resolve() calls that hit a stale (freed / recycled) handle and correctly returned null. */
   staleResolves: number;
+  /** Prefetches dropped because they did not fit under the low watermark. */
+  prefetchSkipped: number;
   residentBytes: number;
   pinnedBytes: number;
   decodedBytes: number;
   budgetBytes: number;
   overBudget: boolean;
+}
+
+interface Slot<T> {
+  generation: number;
+  pageId: string | null;
+  /** Resolved without any map lookup: resolve() runs for every visible layer every frame. */
+  resource: T | null;
 }
 
 interface Entry<D, T> {
@@ -134,6 +144,9 @@ interface Entry<D, T> {
   decoded: D | null;
   resource: T | null;
   slot: number;
+  /** Handle of the current residency (same object while RESIDENT, so binding never allocates). */
+  handle: PageHandle | null;
+  /** Frame of the last upload/release/touch: LRU key among unpinned pages (pinned pages are never evicted). */
   lastUsed: number;
   fetches: number;
   evictions: number;
@@ -146,19 +159,20 @@ const LOADING: ReadonlySet<PageState> = new Set(['REQUESTED', 'FETCHING', 'DECOD
 /** What a renderer needs from residency (keeps renderers independent of decode/upload types). */
 export interface ResidencyView<T> {
   readonly revision: number;
+  /** Increments whenever any handle goes stale (a slot is freed); bindings made since are still valid. */
+  readonly handleEpoch: number;
   acquireItem(itemId: string): void;
   releaseItem(itemId: string): void;
   prefetchItem(itemId: string): void;
   handleFor(pageId: string): PageHandle | null;
   resolve(handle: PageHandle): T | null;
   pageState(pageId: string): PageState;
-  touch(pageId: string): void;
   stats(): RegistryStats;
 }
 
 export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
   private readonly entries = new Map<string, Entry<D, T>>();
-  private readonly slots: { generation: number; pageId: string | null }[] = [];
+  private readonly slots: Slot<T>[] = [];
   private readonly freeSlots: number[] = [];
   private readonly listeners = new Set<() => void>();
   private readonly index: ManifestIndex;
@@ -172,9 +186,11 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
   private inflight = 0;
   private contextLost = false;
   private disposed = false;
-  private counters = { fetches: 0, reloads: 0, cancelled: 0, retries: 0, failures: 0, uploads: 0, evictions: 0, contextLosses: 0, staleResolves: 0 };
+  private counters = { fetches: 0, reloads: 0, cancelled: 0, retries: 0, failures: 0, uploads: 0, evictions: 0, contextLosses: 0, staleResolves: 0, prefetchSkipped: 0 };
   /** Increments whenever the set of usable GPU resources changes; renderers refresh dependent layers. */
   revision = 0;
+  /** Increments on every slot free (eviction, context loss, dispose): the only way a handle can go stale. */
+  handleEpoch = 0;
 
   constructor(index: ManifestIndex, baseUrl: string, fetcher: PageFetcher<D>, uploader: PageUploader<D, T>, options: Partial<RegistryOptions> = {}, scheduler?: RegistryScheduler) {
     this.index = index;
@@ -198,6 +214,7 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
         decoded: null,
         resource: null,
         slot: -1,
+        handle: null,
         lastUsed: 0,
         fetches: 0,
         evictions: 0,
@@ -247,10 +264,14 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
     }
   }
 
-  /** Unpins; loads nobody needs any more are cancelled, resident pages become eviction candidates. */
+  /**
+   * Unpins; loads nobody needs any more are cancelled, resident pages become eviction candidates. Only pinned
+   * pages are drawn, so the frame a page loses its last pin is its "last used" frame for LRU eviction.
+   */
   releaseItem(itemId: string): void {
     for (const e of this.pagesOf(itemId)) {
       e.refs = Math.max(0, e.refs - 1);
+      if (e.refs === 0) e.lastUsed = this.frame;
       if (!this.wanted(e)) this.cancel(e);
     }
   }
@@ -342,10 +363,13 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
     );
   }
 
-  private allocSlot(pageId: string): number {
-    const index = this.freeSlots.pop() ?? this.slots.push({ generation: 0, pageId: null }) - 1;
-    (this.slots[index] as { generation: number; pageId: string | null }).pageId = pageId;
-    return index;
+  private allocSlot(e: Entry<D, T>, resource: T): void {
+    const index = this.freeSlots.pop() ?? this.slots.push({ generation: 0, pageId: null, resource: null }) - 1;
+    const slot = this.slots[index] as Slot<T>;
+    slot.pageId = e.page.id;
+    slot.resource = resource;
+    e.slot = index;
+    e.handle = { index, generation: slot.generation };
   }
 
   private freeSlot(e: Entry<D, T>): void {
@@ -354,9 +378,12 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
     if (slot) {
       slot.generation++;
       slot.pageId = null;
+      slot.resource = null;
       this.freeSlots.push(e.slot);
+      this.handleEpoch++;
     }
     e.slot = -1;
+    e.handle = null;
   }
 
   /**
@@ -367,11 +394,23 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
     this.frame = frame;
     let started = 0;
     let uploaded = 0;
+    let failedUploads = 0;
     const byPriority = (a: Entry<D, T>, b: Entry<D, T>): number => (b.refs > 0 ? 1 : 0) - (a.refs > 0 ? 1 : 0) || a.seq - b.seq;
     const requested = [...this.entries.values()].filter((e) => e.state === 'REQUESTED' && this.wanted(e)).sort(byPriority);
+    let committed = -1; // resident + in-flight bytes, computed lazily (only prefetches need it)
     for (const e of requested) {
       if (this.inflight >= this.options.maxConcurrentFetches) break;
+      if (e.refs === 0) {
+        if (committed < 0) committed = this.committedBytes();
+        if (committed + e.gpuBytes > this.options.budgetBytes * this.options.lowWaterRatio) {
+          e.prefetch = false;
+          e.state = 'UNRESOLVED'; // a later acquire/prefetch requests it again
+          this.counters.prefetchSkipped++;
+          continue;
+        }
+      }
       this.startFetch(e);
+      if (committed >= 0) committed += e.gpuBytes;
       started++;
     }
     if (!this.contextLost) {
@@ -388,6 +427,7 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
           e.state = 'FAILED';
           e.error = `upload failed: ${error instanceof Error ? error.message : String(error)}`;
           this.counters.failures++;
+          failedUploads++;
           continue;
         }
         if (!this.options.keepDecodedCopies && e.decoded) {
@@ -395,14 +435,15 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
           e.decoded = null;
         }
         e.state = 'RESIDENT';
-        e.slot = this.allocSlot(e.page.id);
+        this.allocSlot(e, e.resource);
         e.lastUsed = frame;
         uploaded++;
         this.counters.uploads++;
       }
     }
     const evicted = this.enforceBudget();
-    if (started + uploaded + evicted > 0) this.changed();
+    // Every transition into or out of RESIDENT/FAILED bumps the revision (renderers cache per revision).
+    if (started + uploaded + evicted + failedUploads > 0) this.changed();
     return { started, uploaded, evicted };
   }
 
@@ -435,7 +476,7 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
     this.counters.evictions++;
   }
 
-  /** Marks pages used for drawing this frame (LRU order for eviction). */
+  /** Explicit LRU stamp ("used this frame"); pins stamp pages automatically when released. */
   touch(pageId: string): void {
     const e = this.entries.get(pageId);
     if (e) e.lastUsed = this.frame;
@@ -443,18 +484,17 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
 
   handleFor(pageId: string): PageHandle | null {
     const e = this.entries.get(pageId);
-    if (!e || e.state !== 'RESIDENT' || e.slot < 0) return null;
-    return { index: e.slot, generation: (this.slots[e.slot] as { generation: number }).generation };
+    return e && e.state === 'RESIDENT' ? e.handle : null;
   }
 
   /** The GPU resource for a handle, or null if the handle is stale (evicted, lost or slot recycled). */
   resolve(handle: PageHandle): T | null {
     const slot = this.slots[handle.index];
-    if (!slot || slot.generation !== handle.generation || slot.pageId === null) {
+    if (!slot || slot.generation !== handle.generation || slot.resource === null) {
       this.counters.staleResolves++;
       return null;
     }
-    return this.entries.get(slot.pageId)?.resource ?? null;
+    return slot.resource;
   }
 
   pageState(pageId: string): PageState {
@@ -533,6 +573,13 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
     return total;
   }
 
+  /** Bytes that are or will become resident: resident pages plus loads already under way. */
+  private committedBytes(): number {
+    let total = 0;
+    for (const e of this.entries.values()) if (e.state === 'RESIDENT' || e.state === 'FETCHING' || e.state === 'DECODED' || e.state === 'UPLOAD_QUEUED') total += e.gpuBytes;
+    return total;
+  }
+
   stats(): RegistryStats {
     const byState = Object.fromEntries(ALL_STATES.map((s) => [s, 0])) as Record<PageState, number>;
     let pinnedBytes = 0;
@@ -562,6 +609,7 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
       if (e.timer) this.scheduler.clearTimeout(e.timer);
       if (e.resource) this.uploader.dispose(e.resource);
       if (e.decoded) this.fetcher.release(e.decoded);
+      this.freeSlot(e);
       e.resource = null;
       e.decoded = null;
       e.state = 'UNRESOLVED';

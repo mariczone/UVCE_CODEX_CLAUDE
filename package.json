@@ -21,6 +21,7 @@
     "test:e2e": "pnpm run build && playwright test",
     "screenshots": "node tools/uvce/capture-screenshots.ts",
     "bench:baseline": "node tools/uvce/run-baseline-benchmark.ts",
+    "bench:stages": "node tools/uvce/run-stage-timing.ts",
     "fixtures:legacy:validate": "python3 tools/validate_fixture_assets.py assets/fixtures"
   },
   "dependencies": {

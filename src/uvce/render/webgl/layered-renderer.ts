@@ -34,8 +34,32 @@ interface LayerMesh {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
   /** Generation-checked residency handle of the bound page (null for the missing-asset placeholder). */
   handle: PageHandle | null;
-  pageId: string | null;
 }
+
+/** Anything ranked by the painter sort: characters (by feet) and registered transparent objects (by anchor). */
+interface Rankable {
+  key: string;
+  group: THREE.Group;
+  depth: number;
+  rank: number;
+}
+
+interface SortedObject extends Rankable {
+  anchor: THREE.Object3D;
+}
+
+interface ResolvedEntry {
+  resolved: ResolvedAppearance | null;
+  key: string;
+  issues: Issue[];
+  /** Item ids of the appearance; one frozen array per appearance object, so identity means "same items". */
+  items: readonly string[];
+}
+
+const NO_ITEMS: readonly string[] = Object.freeze([]);
+
+/** Farthest first; the key breaks ties so equal depths never flicker. */
+const byPainterOrder = (a: Rankable, b: Rankable): number => b.depth - a.depth || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
 export interface CharacterDebugInfo {
   entityId: string;
@@ -50,23 +74,28 @@ export interface CharacterDebugInfo {
   position: THREE.Vector3;
 }
 
-interface CharacterRecord {
+interface CharacterRecord extends Rankable {
   entityId: string;
-  group: THREE.Group;
   shadow: THREE.Mesh | null;
   layers: LayerMesh[];
   appearanceRef: AppearanceDefinition | null;
   resolved: ResolvedAppearance | null;
   appearanceKey: string;
   appearanceIssues: Issue[];
+  items: readonly string[];
   poseKey: string;
   pose: ResolvedPose | null;
   direction: Direction8 | null;
   seenFrame: number;
-  depth: number;
-  rank: number;
-  /** Items pinned in the registry because this character is visible. */
-  pinned: string[];
+  /** Layers of the current pose waiting for a page / drawn as missing placeholders; valid while poseKey holds. */
+  pendingLayers: number;
+  failedLayers: number;
+  /** registry.handleEpoch when the layer handles were last bound or audited: unchanged epoch => all still valid. */
+  auditedEpoch: number;
+  /** Items pinned in the registry because this character is visible (shared array, compared by identity). */
+  pinned: readonly string[];
+  /** Items prefetched since the character was culled: one prefetch per culling, not one per frame. */
+  prefetched: readonly string[] | null;
 }
 
 const SHADOW_RADIUS = 0.36;
@@ -104,10 +133,11 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private readonly shadowGeometry = new THREE.CircleGeometry(SHADOW_RADIUS, 24).rotateX(-Math.PI / 2);
   private readonly shadowMaterial: THREE.MeshBasicMaterial;
   private readonly records = new Map<string, CharacterRecord>();
-  private readonly resolvedCache = new WeakMap<AppearanceDefinition, { resolved: ResolvedAppearance | null; key: string; issues: Issue[] }>();
+  private readonly resolvedCache = new WeakMap<AppearanceDefinition, ResolvedEntry>();
   private readonly hiddenLayers = new Set<string>();
   /** Transparent world objects ranked in the same painter sort as characters (glass, water, bridges). */
-  private readonly sortables = new Map<string, { group: THREE.Group; anchor: THREE.Object3D; depth: number; rank: number }>();
+  private readonly sortables = new Map<string, SortedObject>();
+  private readonly ranked: Rankable[] = [];
   private hiddenRevision = 0;
   private frame = 0;
   private readonly frustum = new THREE.Frustum();
@@ -181,7 +211,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     group.name = `sorted:${id}`;
     group.add(object);
     this.root.add(group);
-    this.sortables.set(id, { group, anchor: object, depth: 0, rank: 0 });
+    this.sortables.set(id, { key: `obj:${id}`, group, anchor: object, depth: 0, rank: 0 });
   }
 
   removeSortedObject(id: string): void {
@@ -195,11 +225,13 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     return this.hiddenLayers;
   }
 
-  private resolve(appearance: AppearanceDefinition): { resolved: ResolvedAppearance | null; key: string; issues: Issue[] } {
+  private resolve(appearance: AppearanceDefinition): ResolvedEntry {
     const cached = this.resolvedCache.get(appearance);
     if (cached) return cached;
     const r = resolveAppearance(this.index, appearance);
-    const entry = r.ok ? { resolved: r.value, key: appearanceKey(r.value), issues: r.value.issues } : { resolved: null, key: 'unresolvable', issues: r.issues };
+    const entry: ResolvedEntry = r.ok
+      ? { resolved: r.value, key: appearanceKey(r.value), issues: r.value.issues, items: Object.freeze(r.value.slots.map((s) => s.item.id)) }
+      : { resolved: null, key: 'unresolvable', issues: r.issues, items: NO_ITEMS };
     this.resolvedCache.set(appearance, entry);
     return entry;
   }
@@ -215,6 +247,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       this.shadowRoot.add(shadow);
     }
     const rec: CharacterRecord = {
+      key: entityId,
       entityId,
       group,
       shadow,
@@ -223,27 +256,39 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       resolved: null,
       appearanceKey: '',
       appearanceIssues: [],
+      items: NO_ITEMS,
       poseKey: '',
       pose: null,
       direction: null,
       seenFrame: 0,
+      pendingLayers: 0,
+      failedLayers: 0,
+      auditedEpoch: -1,
       depth: 0,
       rank: 0,
-      pinned: [],
+      pinned: NO_ITEMS,
+      prefetched: null,
     };
     this.records.set(entityId, rec);
     return rec;
   }
 
-  /** Pins exactly `items` for this character (visible), releasing what is no longer needed. */
+  /** Pins exactly `items` for this character, releasing what it no longer needs. O(1) while unchanged. */
   private pin(rec: CharacterRecord, items: readonly string[]): void {
-    for (const id of rec.pinned) if (!items.includes(id)) this.registry.releaseItem(id);
-    for (const id of items) if (!rec.pinned.includes(id)) this.registry.acquireItem(id);
-    rec.pinned = [...items];
+    const previous = rec.pinned;
+    if (previous === items) return;
+    for (const id of items) if (!previous.includes(id)) this.registry.acquireItem(id);
+    for (const id of previous) if (!items.includes(id)) this.registry.releaseItem(id);
+    rec.pinned = items;
+  }
+
+  private hideRecord(rec: CharacterRecord): void {
+    rec.group.visible = false;
+    if (rec.shadow) rec.shadow.visible = false;
   }
 
   private destroyRecord(rec: CharacterRecord): void {
-    this.pin(rec, []);
+    this.pin(rec, NO_ITEMS);
     for (const l of rec.layers) l.mesh.material.dispose();
     this.root.remove(rec.group);
     if (rec.shadow) this.shadowRoot.remove(rec.shadow);
@@ -257,13 +302,17 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       mesh.frustumCulled = false; // the quad is expanded in the shader; culling is per character
       mesh.matrixAutoUpdate = false;
       rec.group.add(mesh);
-      lm = { mesh, handle: null, pageId: null };
+      lm = { mesh, handle: null };
       rec.layers[i] = lm;
     }
     return lm;
   }
 
-  private applyPose(rec: CharacterRecord, counters: { pending: number; failed: number; staleBindings: number }): void {
+  /** Binds the pose's layers to resident pages (fresh handles); counts layers still loading or failed. */
+  private applyPose(rec: CharacterRecord): void {
+    rec.pendingLayers = 0;
+    rec.failedLayers = 0;
+    rec.auditedEpoch = this.registry.handleEpoch;
     const pose = rec.pose;
     const rig = rec.resolved?.rig;
     if (!pose || !rig) return;
@@ -274,14 +323,12 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       if (!page) continue;
       const handle = this.registry.handleFor(page.id);
       const texture = handle ? this.registry.resolve(handle) : null;
-      const state = this.registry.pageState(page.id);
-      if (!texture && state !== 'FAILED') {
-        counters.pending++;
+      if (!texture && this.registry.pageState(page.id) !== 'FAILED') {
+        rec.pendingLayers++;
         continue;
       }
       const lm = this.layerMesh(rec, drawn);
       lm.handle = texture ? handle : null;
-      lm.pageId = page.id;
       const u = lm.mesh.material.uniforms;
       (u.uQuad?.value as THREE.Vector4).set(layer.dest.x - rig.footPivot.x - m, layer.dest.y - rig.footPivot.y - m, layer.dest.w + 2 * m, layer.dest.h + 2 * m);
       if (texture) {
@@ -294,7 +341,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         (u.uMap as THREE.IUniform).value = texture;
         (u.uOpacity as THREE.IUniform).value = 1;
       } else {
-        counters.failed++;
+        rec.failedLayers++;
         (u.uUvRect?.value as THREE.Vector4).set(0, 0, (layer.dest.w + 2 * m) / 8, (layer.dest.h + 2 * m) / 8);
         (u.uMap as THREE.IUniform).value = this.missing;
         (u.uOpacity as THREE.IUniform).value = 0.75;
@@ -321,7 +368,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       orthographic: (camera as THREE.OrthographicCamera).isOrthographicCamera === true,
     };
     const visible: CharacterRecord[] = [];
-    const counters = { pending: 0, failed: 0, staleBindings: 0 };
+    let pending = 0;
+    let failed = 0;
+    let staleBindings = 0;
     let poseUpdates = 0;
     let culled = 0;
     const appearances = new Set<string>();
@@ -334,55 +383,58 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         rec.resolved = r.resolved;
         rec.appearanceKey = r.key;
         rec.appearanceIssues = r.issues;
+        rec.items = r.items;
         rec.poseKey = '';
       }
-      const hide = (): void => {
-        rec.group.visible = false;
-        if (rec.shadow) rec.shadow.visible = false;
-      };
-      const items = rec.resolved ? rec.resolved.slots.map((s) => s.item.id) : [];
       if (!c.visible || !rec.resolved) {
-        this.pin(rec, []);
-        hide();
+        this.pin(rec, NO_ITEMS);
+        rec.prefetched = null;
+        this.hideRecord(rec);
         continue;
       }
       this.sphere.center.set(c.position.x, c.position.y + 0.9, c.position.z);
       if (!this.frustum.intersectsSphere(this.sphere)) {
-        // Off screen: unpin (evictable) but keep warm with a low-priority prefetch.
-        this.pin(rec, []);
-        for (const id of items) this.registry.prefetchItem(id);
+        // Off screen: unpin (evictable) but keep warm with a low-priority prefetch, issued once per culling:
+        // re-requesting every frame would refetch the pages the budget has just evicted (thrash).
+        this.pin(rec, NO_ITEMS);
+        if (rec.prefetched !== rec.items) {
+          for (const id of rec.items) this.registry.prefetchItem(id);
+          rec.prefetched = rec.items;
+        }
         culled++;
-        hide();
+        this.hideRecord(rec);
         continue;
       }
-      this.pin(rec, items);
+      this.pin(rec, rec.items);
+      rec.prefetched = null;
       const direction = spriteDirection(c.facingYaw, viewYawForCharacter(viewer, c.position));
       const clip = this.index.clips.get(c.animation.clipId);
       const frameIndex = clip ? sampleClip(clip, clipTimeAt(c.animation, nowMs)).frameIndex : 0;
+      // The registry revision changes on every residency change (upload, eviction, failure, context loss), so a
+      // pose bound under the current revision has valid handles and up-to-date pending/failed counts.
       const key = `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}|${this.registry.revision}`;
       if (key !== rec.poseKey) {
         rec.pose = resolvePose(this.index, rec.resolved, { clipId: c.animation.clipId, direction, frameIndex, hiddenLayers: this.hiddenLayers });
         rec.poseKey = key;
         rec.direction = direction;
-        this.applyPose(rec, counters);
+        this.applyPose(rec);
         poseUpdates++;
-      } else if (rec.pose) {
-        // Still count layers waiting for pages / drawn as placeholders.
-        for (const l of rec.pose.layers) {
-          const st = this.registry.pageState(l.region.page);
-          if (st === 'FAILED') counters.failed++;
-          else if (st !== 'RESIDENT') counters.pending++;
-        }
       }
-      // Generation audit: a visible layer may only draw the texture its handle currently resolves to.
-      for (const l of rec.layers) {
-        if (!l.mesh.visible || !l.handle || !l.pageId) continue;
-        const current = this.registry.resolve(l.handle);
-        if (current === null || current !== l.mesh.material.uniforms.uMap?.value) {
-          l.mesh.visible = false;
-          rec.poseKey = '';
-          counters.staleBindings++;
-        } else this.registry.touch(l.pageId);
+      pending += rec.pendingLayers;
+      failed += rec.failedLayers;
+      // Generation audit (defence in depth, independent of the revision key above): a visible layer may only draw
+      // the texture its handle resolves to right now; anything else is hidden and rebound next frame. Handles can
+      // only go stale when a slot is freed, so layers are re-checked only after the handle epoch moved.
+      if (rec.auditedEpoch !== this.registry.handleEpoch) {
+        for (const l of rec.layers) {
+          if (!l.handle || !l.mesh.visible) continue;
+          if (this.registry.resolve(l.handle) !== l.mesh.material.uniforms.uMap?.value) {
+            l.mesh.visible = false;
+            rec.poseKey = '';
+            staleBindings++;
+          }
+        }
+        rec.auditedEpoch = this.registry.handleEpoch;
       }
       rec.group.position.set(c.position.x, c.position.y, c.position.z);
       rec.group.visible = true;
@@ -394,30 +446,22 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       appearances.add(rec.appearanceKey);
       visible.push(rec);
     }
-    for (const rec of [...this.records.values()]) if (rec.seenFrame !== this.frame) this.destroyRecord(rec);
-    // Painter order: farthest first (character feet / sortable anchors); id breaks ties so equal depths never flicker.
-    const ranked: { key: string; depth: number; apply(rank: number): void }[] = visible.map((rec) => ({
-      key: rec.entityId,
-      depth: rec.depth,
-      apply: (rank: number) => {
-        rec.rank = rank;
-        rec.group.renderOrder = rank;
-      },
-    }));
-    for (const [id, s] of this.sortables) {
+    for (const rec of this.records.values()) if (rec.seenFrame !== this.frame) this.destroyRecord(rec);
+    // Painter order: one back-to-front sort over characters and transparent objects (renderOrder = rank).
+    const ranked = this.ranked;
+    ranked.length = 0;
+    for (const rec of visible) ranked.push(rec);
+    for (const s of this.sortables.values()) {
       s.anchor.updateWorldMatrix(true, false);
       s.depth = -this.tmp.setFromMatrixPosition(s.anchor.matrixWorld).applyMatrix4(camera.matrixWorldInverse).z;
-      ranked.push({
-        key: `obj:${id}`,
-        depth: s.depth,
-        apply: (rank: number) => {
-          s.rank = rank;
-          s.group.renderOrder = rank;
-        },
-      });
+      ranked.push(s);
     }
-    ranked.sort((a, b) => b.depth - a.depth || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-    ranked.forEach((r, i) => r.apply(i + 1));
+    ranked.sort(byPainterOrder);
+    for (let i = 0; i < ranked.length; i++) {
+      const r = ranked[i] as Rankable;
+      r.rank = i + 1;
+      r.group.renderOrder = i + 1;
+    }
     let layers = 0;
     for (const rec of visible) for (const l of rec.layers) if (l.mesh.visible) layers++;
     const reg = this.registry.stats();
@@ -426,12 +470,12 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       visibleCharacters: visible.length,
       culledCharacters: culled,
       visibleLayers: layers,
-      pendingLayers: counters.pending,
-      failedLayers: counters.failed,
+      pendingLayers: pending,
+      failedLayers: failed,
       uniqueVisibleAppearances: appearances.size,
       poseUpdates,
       prepareCpuMs: performance.now() - t0,
-      staleBindings: counters.staleBindings,
+      staleBindings,
       sourceEstimatedBytes: reg.residentBytes,
       pendingDownloads: reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.RETRY_BACKOFF,
       cacheEvictions: reg.evictions,
@@ -484,8 +528,8 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
 
   /** Visible characters (and registered transparent objects, prefixed "obj:") in painter order, back to front. */
   paintOrder(): string[] {
-    const entries = [...this.records.values()].filter((r) => r.group.visible).map((r) => ({ key: r.entityId, rank: r.rank }));
-    for (const [id, s] of this.sortables) entries.push({ key: `obj:${id}`, rank: s.rank });
+    const entries: Rankable[] = [...this.records.values()].filter((r) => r.group.visible);
+    for (const s of this.sortables.values()) entries.push(s);
     return entries.sort((a, b) => a.rank - b.rank).map((e) => e.key);
   }
 

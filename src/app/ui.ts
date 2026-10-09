@@ -208,7 +208,7 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
         `rAF interval p50 ${fmt(snap.frameInterval.p50, 1)} p95 ${fmt(snap.frameInterval.p95, 1)} ms`,
         `GPU timer ${snap.gpuMs === null ? 'n/a' : `${fmt(snap.gpuMs)} ms (${app.env.glRenderer.includes('SwiftShader') ? 'SOFTWARE rasterizer' : 'device'})`}`,
         `pages resident ${reg.byState.RESIDENT}/${reg.pages}, loading ${reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.UPLOAD_QUEUED}, failed ${reg.byState.FAILED}, evicted ${reg.byState.EVICTED}`,
-        `fetches ${reg.fetches} (reloads ${reg.reloads}, retries ${reg.retries}, cancelled ${reg.cancelled}), uploads ${reg.uploads}, evictions ${reg.evictions}`,
+        `fetches ${reg.fetches} (reloads ${reg.reloads}, retries ${reg.retries}, cancelled ${reg.cancelled}, prefetch skipped ${reg.prefetchSkipped}), uploads ${reg.uploads}, evictions ${reg.evictions}`,
         `GPU source ${(reg.residentBytes / 1048576).toFixed(2)} / budget ${(reg.budgetBytes / 1048576).toFixed(0)} MiB, pinned ${(reg.pinnedBytes / 1048576).toFixed(2)} MiB${reg.overBudget ? ' (OVER BUDGET: pinned set too large)' : ''} (estimates, not measured VRAM)`,
         `stale handle hits ${reg.staleResolves}, stale bindings ${c.staleBindings}, context losses ${reg.contextLosses}${app.contextLost ? ' (CONTEXT LOST)' : ''}`,
         `sim ${(snap.simTimeMs / 1000).toFixed(2)} s ${app.paused ? '(paused)' : ''}`,

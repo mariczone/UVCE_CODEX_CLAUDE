@@ -50,6 +50,8 @@ export function pageGpuBytes(page: CompiledPage, mipmapped: boolean): number {
 export interface UploaderOptions {
   /** Force a filter (pixel-exact test scenes use nearest without mipmaps). */
   forceFilter: 'linear' | 'nearest' | null;
+  /** false = never build mip chains (default true: linear pages with mipLevels > 0 get them). */
+  mipmaps?: boolean;
 }
 
 /**
@@ -59,7 +61,7 @@ export interface UploaderOptions {
  */
 export function createTextureUploader(three: THREE.WebGLRenderer, options: UploaderOptions): PageUploader<ImageBitmap, THREE.Texture> {
   const gl = three.getContext() as WebGL2RenderingContext;
-  const useMips = (page: CompiledPage): boolean => page.mipLevels > 0 && (options.forceFilter ?? page.filter) === 'linear';
+  const useMips = (page: CompiledPage): boolean => options.mipmaps !== false && page.mipLevels > 0 && (options.forceFilter ?? page.filter) === 'linear';
   return {
     upload(page, bitmap) {
       const tex = new THREE.Texture(bitmap);

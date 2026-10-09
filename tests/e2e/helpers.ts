@@ -44,6 +44,7 @@ export interface RegistryStatsView {
   evictions: number;
   contextLosses: number;
   staleResolves: number;
+  prefetchSkipped: number;
   residentBytes: number;
   pinnedBytes: number;
   budgetBytes: number;

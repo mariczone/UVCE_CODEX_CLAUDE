@@ -11,9 +11,10 @@ export interface PreviewServer {
   stop(): void;
 }
 
-export async function startPreviewServer(port: number): Promise<PreviewServer> {
-  if (!existsSync('dist/index.html')) throw new Error('dist/ not found: run `pnpm build` first');
-  const child: ChildProcess = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], {
+/** Serves a production build (default `dist/`; another checkout's build dir for A/B runs) with COOP/COEP headers. */
+export async function startPreviewServer(port: number, distDir = 'dist'): Promise<PreviewServer> {
+  if (!existsSync(`${distDir}/index.html`)) throw new Error(`${distDir}/ not found: run \`pnpm build\` first`);
+  const child: ChildProcess = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort', '--outDir', distDir], {
     stdio: 'ignore',
   });
   const url = `http://127.0.0.1:${port}`;

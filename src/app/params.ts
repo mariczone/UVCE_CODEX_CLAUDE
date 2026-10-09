@@ -25,6 +25,8 @@ export interface AppParams {
   bench: boolean;
   /** Source page GPU budget in MiB (registry eviction threshold). */
   budgetMiB: number;
+  /** `mips=0` uploads linear pages without mip chains (quality/performance comparison). */
+  mips: boolean;
 }
 
 export function parseParams(search: string): AppParams {
@@ -62,5 +64,6 @@ export function parseParams(search: string): AppParams {
     slots,
     bench: q.get('bench') === '1',
     budgetMiB: Math.max(1, num('budgetMiB', 256)),
+    mips: q.get('mips') !== '0',
   };
 }

@@ -134,7 +134,7 @@ export class UvceApp {
       this.index,
       opts.assetBaseUrl,
       createBitmapFetcher(),
-      createTextureUploader(this.three, { forceFilter: this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest') }),
+      createTextureUploader(this.three, { forceFilter: this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest'), mipmaps: this.params.mips }),
       { budgetBytes: this.params.budgetMiB * 1024 * 1024 },
     );
     this.loseContextExt = gl.getExtension('WEBGL_lose_context');
