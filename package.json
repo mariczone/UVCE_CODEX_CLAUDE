@@ -1,0 +1,40 @@
+{
+  "name": "uvce-poc",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Unified Virtual Character Engine (UVCE) proof of concept: modular 2D RGBA sprites composed at runtime inside a Three.js 2.5D scene",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "generate:fixtures": "node tools/uvce/generate-fixtures.ts",
+    "assets:build": "node tools/uvce/build-assets.ts",
+    "assets": "pnpm run generate:fixtures && pnpm run assets:build",
+    "dev": "pnpm run assets && vite",
+    "build": "pnpm run assets && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "pnpm run build && playwright test",
+    "screenshots": "node tools/uvce/capture-screenshots.ts",
+    "bench:baseline": "node tools/uvce/run-baseline-benchmark.ts",
+    "fixtures:legacy:validate": "python3 tools/validate_fixture_assets.py assets/fixtures"
+  },
+  "dependencies": {
+    "three": "0.186.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.5",
+    "@types/pngjs": "6.0.5",
+    "@types/three": "0.186.0",
+    "pngjs": "7.0.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.3",
+    "vitest": "4.1.11"
+  }
+}

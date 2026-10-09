@@ -1,0 +1,5 @@
+{
+  "//": "Editor entry point; `pnpm typecheck` checks both projects separately.",
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
+}
