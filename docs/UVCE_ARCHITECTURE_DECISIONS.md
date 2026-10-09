@@ -353,3 +353,43 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   The fixture companion items hair_02, hat_03, armor_03 and weapon_02 are now mirrored (330 → 316 source frames). Only
   the 48 hashes of the mixed look in W/SW/NW changed; the default-look goldens are unchanged. The e2e W/NW parity cases
   in LAYERED, SHADER and FULL_CACHE therefore cover mirrored layers on the GPU. Disabling the flip fails 3 tests.
+## ADR-17 Projected-size LOD and visual animation budget (M4)
+
+- **Decision:** the renderer measures each visible character's projected canvas height (foot and canvas top through
+  the view-projection matrix, × viewport height) and picks a level with hysteresis (`src/uvce/render/lod.ts`; blueprint
+  §10 thresholds 150/80/30 px, ±10 % band). The level only sets the **visual** animation rate (null/null/12/8 Hz):
+  the clip clock is sampled at that rate with a stable per-entity stagger. Positions, facing and the simulation are
+  untouched. Texture detail at small sizes already comes from the mip chains.
+- **Budget:** `animationBudget` caps animation-only pose updates per frame below HIGH; a character is deferred at most
+  3 frames in a row. Appearance, direction, residency and debug-toggle changes are never deferred (they are
+  correctness, the frame is not).
+- **No popping by construction:** the throttled clock never runs backwards and lags by less than one period, so frames
+  advance in clip order; a level change shortens or lengthens one hold. Nothing is swapped (same images, same quads).
+- **Proof:** `tests/unit/lod.test.ts`, LOD cases in `tests/unit/layered-renderer.test.ts` (rate, order, bounded
+  deferral, appearance changes pass the budget, projected height), `tests/e2e/lod.spec.ts` (levels follow framing;
+  the parity frame is pixel-identical with and without LOD). Mutations (no throttle, unbounded deferral) are caught.
+- **Status:** opt-in (`lod=1`, `animBudget=N`). Headless A/B showed no measurable gain in the synthetic scene because
+  its clips (5.5–10 fps) are slower than the LOW/TINY rates ([results](benchmark-results/lod/README.md)). Re-test
+  with the real sprite set and on the GPU at 60 Hz before any default change.
+
+## ADR-18 Multiplayer-style appearance streaming (M4)
+
+- **Protocol** (`src/uvce/net/appearance-stream.ts`, blueprint §11): ids and revisions, never images.
+  `appearance.snapshot` (full look at revision r; on entering interest and as a resync answer), `appearance.changed`
+  (slot delta at r, applies only on r − 1), `appearance.revision` (heartbeat, piggybacks on state updates) and
+  `entity.left`. Events for another manifest version are rejected.
+- **Ordering and loss:** stale and duplicate deltas are dropped; future deltas are held until the gap fills; a gap
+  open longer than 400 ms requests one snapshot. Deltas are partial, so skipping a lost one is never allowed.
+- **Found by the convergence test:** losing the *last* delta leaves no later delta to reveal the gap, so a client
+  could stay wrong forever. The revision heartbeat closes that hole (a heartbeat ahead of the client opens a gap).
+- **Prefetch:** every applied change reports the entity's item dependencies; the app prefetches them while the
+  player is in interest but not yet visible. The registry deduplicates, so shared items cost nothing.
+- **Queued uploads:** the registry already uploaded at most `uploadsPerFrame` pages per frame, demand first. It now
+  also takes `uploadBytesPerFrame` (the first upload of a frame always goes through) and reports `uploadQueue` /
+  `uploadsDeferred`. The default stays uncapped (0) until a hitch measurement asks for a value.
+- **Synthetic network** (`src/uvce/bench/synthetic-network.ts`): deterministic, unreliable deltas (latency jitter,
+  duplicates, loss) and reliable snapshots. The app's `net=1` drives the NPCs with it.
+- **Proof:** `tests/unit/appearance-stream.test.ts` (100 players, 5 % loss, 10 % duplicates, reordering: every client
+  converges to the server revision and slots), the registry byte-cap test, and `tests/e2e/net.spec.ts`. In the real
+  app 100 players arrived over a lossy link: 27 deltas lost, all repaired by resyncs; with a 1.5 s prefetch lead
+  0 pop-ins, without a lead 6 of 99 players appeared with layers still loading (that run).

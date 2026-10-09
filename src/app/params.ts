@@ -39,6 +39,16 @@ export interface AppParams {
   lod: boolean;
   /** animBudget=N (with lod=1): at most N animation-only pose updates per frame below the HIGH level. */
   animBudget: number | null;
+  /**
+   * net=1 (stage scene): NPC appearances arrive through the synthetic appearance network (Milestone 4). One player
+   * enters interest every `netArrivalMs` and becomes visible `netLeadMs` later (prefetch lead; 0 = no lead);
+   * `netLoss` = delta loss rate, `netChangeMs` = mean time between a player's equipment changes (0 = never).
+   */
+  net: boolean;
+  netArrivalMs: number;
+  netLeadMs: number;
+  netLoss: number;
+  netChangeMs: number;
 }
 
 export function parseParams(search: string): AppParams {
@@ -83,5 +93,10 @@ export function parseParams(search: string): AppParams {
     plannerPressure: q.get('plannerPressure') === 'on' ? 'on' : q.get('plannerPressure') === 'off' ? 'off' : 'auto',
     lod: q.get('lod') === '1',
     animBudget: q.get('animBudget') === null ? null : Math.max(0, Math.floor(num('animBudget', 0))),
+    net: q.get('net') === '1',
+    netArrivalMs: Math.max(0, num('netArrivalMs', 50)),
+    netLeadMs: Math.max(0, num('netLeadMs', 1500)),
+    netLoss: Math.min(0.5, Math.max(0, num('netLoss', 0.02))),
+    netChangeMs: Math.max(0, num('netChangeMs', 4000)),
   };
 }

@@ -17,6 +17,7 @@ import { GpuPressureDetector, type PressureReading } from '../uvce/render/pressu
 import { createMissingTexture, createUnitQuadGeometry } from '../uvce/render/webgl/sprite-material.ts';
 import { LayeredCharacterRenderer } from '../uvce/render/webgl/layered-renderer.ts';
 import { GpuTimer } from './gpu-timer.ts';
+import { NetCrowdDriver, type NetDriverStats } from './net-driver.ts';
 import { DebugOverlay, type OverlayOptions } from './overlay.ts';
 import type { AppParams } from './params.ts';
 import { PARITY_CAMERA_CENTER, PARITY_VARIANTS, type ParityCharacter, parityCharacterZ } from './parity-scenes.ts';
@@ -59,6 +60,8 @@ export interface FrameSnapshot {
   gpuMs: number | null;
   character: ReturnType<LayeredCharacterRenderer['getMetrics']>;
   registry: ReturnType<SourceAssetRegistry<ImageBitmap, THREE.Texture>['stats']>;
+  /** net=1: appearance streaming counters (null otherwise). */
+  net: NetDriverStats | null;
 }
 
 export class UvceApp {
@@ -89,6 +92,8 @@ export class UvceApp {
   members: CrowdMember[] = [];
   private parityCharacters: ParityCharacter[] = [];
   instances: CharacterInstance[] = [];
+  /** net=1: NPC appearances streamed from the synthetic server (null otherwise). */
+  net: NetCrowdDriver | null = null;
   count: number;
   seed: number;
   simTimeMs: number;
@@ -299,6 +304,11 @@ export class UvceApp {
       animation: i === 0 && !parity ? this.heroState.animation : { clipId: m.clipId, clipStartMs: 0, speed: 1, phaseOffsetMs: m.phaseOffsetMs },
       visible: true,
     }));
+    const p = this.params;
+    this.net =
+      p.net && p.scene === 'stage' && this.count > 2
+        ? new NetCrowdDriver(this.index, this.registry, this.instances, this.simTimeMs, { arrivalMs: p.netArrivalMs, leadMs: p.netLeadMs, lossRate: p.netLoss, changeEveryMs: p.netChangeMs, seed: this.seed })
+        : null;
   }
 
   private get hero(): CharacterInstance {
@@ -419,7 +429,9 @@ export class UvceApp {
     this.registry.beginFrame(++this.frameNo);
     this.controls?.update();
     this.updateWorld();
+    this.net?.update(this.simTimeMs);
     this.characters.prepareFrame(this.instances, this.simTimeMs);
+    this.net?.afterPrepare((id) => this.characters.debugInfo(id)?.pendingLayers ?? 0);
     const t1 = performance.now();
     this.gpuTimer.begin();
     this.three.render(this.scene, this.camera);
@@ -496,6 +508,7 @@ export class UvceApp {
       gpuMs: this.gpuTimer.lastMs,
       character: this.characters.getMetrics(),
       registry: this.registry.stats(),
+      net: this.net?.stats() ?? null,
     };
   }
 

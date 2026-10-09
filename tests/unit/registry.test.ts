@@ -137,6 +137,37 @@ describe('source asset registry v2', () => {
     expect(h.reg.isIdle()).toBe(true);
   });
 
+  it('bounds GPU upload bytes per frame; demand pages first; one upload per frame always goes through', async () => {
+    const { index } = await compiledAssets();
+    const h = harness(index, { uploadBytesPerFrame: 2500 }); // fake pages are 1000 bytes: 2 per frame
+    h.reg.prefetchItem('weapon_01');
+    for (const id of ['hat_01', 'hat_02', 'hat_03', 'armor_01']) h.reg.acquireItem(id);
+    h.step();
+    await h.settle();
+    h.step();
+    await h.settle();
+    expect(h.reg.stats().uploadQueue).toBeGreaterThan(0);
+    const perFrame: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const before = h.uploads.length;
+      h.step();
+      await h.settle();
+      perFrame.push(h.uploads.length - before);
+    }
+    expect(Math.max(...perFrame)).toBeLessThanOrEqual(2);
+    expect(h.uploads.slice(0, 4).sort()).toEqual(['page-armor_01-0', HAT1, HAT2, HAT3].sort()); // the prefetch waits
+    expect(h.reg.stats().uploadsDeferred).toBeGreaterThan(0);
+    // A cap below one page still lets one page per frame through (no starvation).
+    const tiny = harness(index, { uploadBytesPerFrame: 10 });
+    for (const id of ['hat_01', 'hat_02']) tiny.reg.acquireItem(id);
+    tiny.step();
+    await tiny.settle();
+    tiny.step();
+    expect(tiny.uploads).toHaveLength(1);
+    tiny.step();
+    expect(tiny.uploads).toHaveLength(2);
+  });
+
   it('an equipment swap fetches only the new item; unchanged pages are never refetched', async () => {
     const { index } = await compiledAssets();
     const h = harness(index);

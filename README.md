@@ -12,6 +12,7 @@ art.**
 |---|---|
 | [`art-spec/`](art-spec/README.md) | **Artwork specification** (Thai): canvas, pivot, directions, layers, sockets, clips, file format, manifest, templates and examples for real character art |
 | [`docs/LOCAL_TEST_CHECKLIST.md`](docs/LOCAL_TEST_CHECKLIST.md) | **Run this on your own machine:** every test, the GPU benchmark and a manual browser pass, in one go |
+| [`docs/UVCE_MILESTONE_4_PROGRESS.md`](docs/UVCE_MILESTONE_4_PROGRESS.md) | Milestone 4 (in progress): projected-size LOD, appearance streaming with prefetch; what to re-test with real sprites |
 | [`docs/UVCE_MILESTONE_3_PROGRESS.md`](docs/UVCE_MILESTONE_3_PROGRESS.md) | Milestone 3 (in progress): SHADER mode, parity, LAYERED vs SHADER on an RTX 3070 |
 | [`docs/UVCE_MILESTONE_1_2_REPORT.md`](docs/UVCE_MILESTONE_1_2_REPORT.md) | Milestones 1–2: what was built, verified output, performance vs M0, limitations, next steps |
 | [`docs/UVCE_MILESTONE_0_REPORT.md`](docs/UVCE_MILESTONE_0_REPORT.md) | Milestone 0: what was built, verified output, limitations |
@@ -55,7 +56,7 @@ URL parameters: `count=20`, `seed=42`, `dir=SE`, `clip=walk`, `t=350` (ms), `pau
 per character) / `mode=FULL_CACHE` (baked frames from a render-target cache, `cacheMiB=64`) / `mode=LAYERED` (one quad per
 layer). **SHADER is the default** since the RTX 3070 benchmarks; LAYERED is the automatic fallback, and PARTIAL_CACHE
 falls back to it with the reason shown. Workload knobs: `looks=8` (only 8 distinct NPC
-outfits), `sync=1` (NPCs animate in step).
+outfits), `sync=1` (NPCs animate in step). Milestone 4: `lod=1` (projected-size LOD, `animBudget=N`), `net=1` (NPC looks streamed from a synthetic lossy server: `netArrivalMs`, `netLeadMs` prefetch lead, `netLoss`, `netChangeMs`).
 
 ---
 

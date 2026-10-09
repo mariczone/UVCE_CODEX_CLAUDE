@@ -1,0 +1,139 @@
+{
+  "kind": "uvce-baseline-benchmark",
+  "renderMode": "LAYERED",
+  "date": "2026-10-09T18:42:59.573Z",
+  "commit": "56f9385c3979f0cee51327710384225889b45229",
+  "workingTree": "dirty",
+  "protocol": {
+    "counts": [
+      300
+    ],
+    "runs": 2,
+    "warmupMs": 2000,
+    "measureMs": 15000,
+    "viewport": {
+      "width": 1280,
+      "height": 720,
+      "deviceScaleFactor": 1
+    },
+    "seed": 20261009,
+    "extraQuery": "",
+    "chromiumArgs": [
+      "--use-angle=swiftshader",
+      "--enable-unsafe-swiftshader",
+      "--ignore-gpu-blocklist"
+    ],
+    "scene": "stage scene, perspective camera framed per count, animation playing, MSAA on, overlay and side panel off (bench=1, canvas = full viewport)",
+    "aggregation": "per run: nearest-rank percentiles over all frames in the window; reported: median across runs"
+  },
+  "environment": {
+    "browser": "Chromium 141.0.7390.37",
+    "glVersion": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "glRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "glVendor": "Google Inc. (Google)",
+    "maxTextureSize": 8192,
+    "timerQuery": true,
+    "webgpuExposed": true,
+    "webgpuAdapter": "none",
+    "devicePixelRatio": 1,
+    "pixelRatioUsed": 1,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.7390.37 Safari/537.36",
+    "hardwareConcurrency": 12,
+    "crossOriginIsolated": true,
+    "os": "win32 10.0.26200",
+    "cpu": "AMD Ryzen 5 5600 6-Core Processor               x12",
+    "memoryGiB": 127.9,
+    "node": "v24.18.0"
+  },
+  "assets": {
+    "manifestVersion": "m-e4fd170dc49d4fe1",
+    "stats": {
+      "sourceFrames": 316,
+      "uniqueImages": 188,
+      "dedupedFrames": 128,
+      "pageCount": 12,
+      "pageBytesRGBA8": 6119424,
+      "pageBytesWithMips": 8158744,
+      "pageFileBytes": 329965,
+      "crossGroupSharedImages": 0
+    }
+  },
+  "scenarios": [
+    {
+      "count": 300,
+      "runs": 2,
+      "visibleCharacters": 300,
+      "visibleLayers": 1801,
+      "uniqueAppearances": 149,
+      "drawCalls": 606,
+      "triangles": 7986,
+      "samplesPerRun": [
+        226,
+        223
+      ],
+      "cpuUpdateMs": {
+        "p50": 2.137,
+        "p95": 15.52,
+        "p99": 17.005
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 13.208,
+        "p95": 21.74,
+        "p99": 27.588
+      },
+      "cpuTotalMs": {
+        "p50": 19.655,
+        "p95": 26.44,
+        "p99": 38.082
+      },
+      "rafIntervalMs": {
+        "p50": 66.665,
+        "p95": 116.665
+      },
+      "gpuTimerQueryMs": {
+        "p50": 59.759,
+        "p95": 62.058,
+        "samplesPerRun": [
+          52,
+          53
+        ]
+      },
+      "residentPages": 12,
+      "pageLoads": 12,
+      "sourceRGBA8MiB": 5.836,
+      "residentGpuEstimateMiB": 7.781,
+      "assetRequests": 13,
+      "pageRequests": 12,
+      "downloadedAssetKiB": 338.934,
+      "timeToReadyMs": 621,
+      "renderMode": "SHADER",
+      "compositedCharacters": 300,
+      "cachedCharacters": 0,
+      "cacheHitRatio": null,
+      "frameCacheBakesLastFrame": 0,
+      "frameCachePauses": 0,
+      "frameCacheMiB": 0,
+      "poseUpdatesPerFrame": {
+        "mean": 151.1,
+        "p95": 230
+      },
+      "lodLevels": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "caveats": [
+    "Rendered with ANGLE/SwiftShader (CPU software rasterizer) in a headless container: rAF interval and GPU-timer values measure software rasterisation, NOT a GPU. No FPS claim is made.",
+    "CPU update = character prepare (resolve/cull/sort) + world update; CPU submit = three.js render() call on the main thread (command encoding, not GPU execution).",
+    "CPU submit can include command-buffer back-pressure when the (software) GPU process falls behind.",
+    "Draw calls include world props and one ground-shadow decal per visible character.",
+    "Byte figures are owner-calculated estimates, not measured VRAM: sourceRGBA8MiB = level 0 of resident pages; residentGpuEstimateMiB includes mip chains."
+  ]
+}

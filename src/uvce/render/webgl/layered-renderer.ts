@@ -114,6 +114,8 @@ export interface CharacterDebugInfo {
   position: THREE.Vector3;
   /** Projected-size LOD level (index into the policy; -1 = LOD off or not assessed yet). */
   lodLevel: number;
+  /** Layers of the current pose still waiting for their page. */
+  pendingLayers: number;
 }
 
 interface CharacterRecord extends Rankable {
@@ -909,6 +911,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       visible: rec.group.visible,
       position: rec.group.position.clone(),
       lodLevel: rec.lodLevel,
+      pendingLayers: rec.pendingLayers,
     };
   }
 

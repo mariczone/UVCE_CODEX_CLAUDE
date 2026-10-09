@@ -64,6 +64,11 @@ export interface RegistryOptions {
   maxAttempts: number;
   retryBaseMs: number;
   uploadsPerFrame: number;
+  /**
+   * Milestone 4: GPU bytes uploaded per frame at most (the first upload of a frame always goes through, so a page
+   * larger than the cap still loads). Bounds upload hitches when many players arrive at once. 0 = no byte cap.
+   */
+  uploadBytesPerFrame: number;
   keepDecodedCopies: boolean;
 }
 
@@ -75,6 +80,7 @@ export const DEFAULT_REGISTRY_OPTIONS: RegistryOptions = {
   maxAttempts: 3,
   retryBaseMs: 250,
   uploadsPerFrame: 2,
+  uploadBytesPerFrame: 0,
   keepDecodedCopies: true,
 };
 
@@ -115,6 +121,10 @@ export interface RegistryStats {
   staleResolves: number;
   /** Prefetches dropped because they did not fit under the low watermark. */
   prefetchSkipped: number;
+  /** Decoded pages waiting for a GPU upload. */
+  uploadQueue: number;
+  /** Upload slots postponed to a later frame by the per-frame count or byte cap (cumulative, per page per frame). */
+  uploadsDeferred: number;
   residentBytes: number;
   pinnedBytes: number;
   decodedBytes: number;
@@ -186,7 +196,7 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
   private inflight = 0;
   private contextLost = false;
   private disposed = false;
-  private counters = { fetches: 0, reloads: 0, cancelled: 0, retries: 0, failures: 0, uploads: 0, evictions: 0, contextLosses: 0, staleResolves: 0, prefetchSkipped: 0 };
+  private counters = { fetches: 0, reloads: 0, cancelled: 0, retries: 0, failures: 0, uploads: 0, evictions: 0, contextLosses: 0, staleResolves: 0, prefetchSkipped: 0, uploadsDeferred: 0 };
   /** Increments whenever the set of usable GPU resources changes; renderers refresh dependent layers. */
   revision = 0;
   /** Increments on every slot free (eviction, context loss, dispose): the only way a handle can go stale. */
@@ -415,8 +425,13 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
     }
     if (!this.contextLost) {
       const queued = [...this.entries.values()].filter((e) => e.state === 'UPLOAD_QUEUED').sort(byPriority);
+      let uploadedBytes = 0;
+      const byteCap = this.options.uploadBytesPerFrame;
       for (const e of queued) {
-        if (uploaded >= this.options.uploadsPerFrame) break;
+        if (uploaded >= this.options.uploadsPerFrame || (byteCap > 0 && uploaded > 0 && uploadedBytes + e.gpuBytes > byteCap)) {
+          if (this.wanted(e)) this.counters.uploadsDeferred++;
+          continue;
+        }
         if (!this.wanted(e)) {
           this.cancel(e);
           continue;
@@ -438,6 +453,7 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
         this.allocSlot(e, e.resource);
         e.lastUsed = frame;
         uploaded++;
+        uploadedBytes += e.gpuBytes;
         this.counters.uploads++;
       }
     }
@@ -594,6 +610,7 @@ export class SourceAssetRegistry<D, T> implements ResidencyView<T> {
       pages: this.entries.size,
       byState,
       ...this.counters,
+      uploadQueue: byState.UPLOAD_QUEUED,
       residentBytes,
       pinnedBytes,
       decodedBytes,
