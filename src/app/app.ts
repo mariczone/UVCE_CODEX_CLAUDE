@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SourceAssetRegistry, type PageLoader } from '../uvce/assets/source-registry.ts';
 import { RollingSeries, summarize } from '../uvce/bench/frame-stats.ts';
-import { type CrowdMember, HERO_ID, generateCrowd, heroAppearance, patrolPose } from '../uvce/bench/crowd.ts';
+import { type CrowdMember, HERO_ID, companionAppearance, generateCrowd, heroAppearance, patrolPose } from '../uvce/bench/crowd.ts';
 import { type AnimationState, switchClip } from '../uvce/core/animation.ts';
 import { withSlot } from '../uvce/core/appearance-resolver.ts';
 import { type Direction8, directionCenterYaw, facingYawForDirection, normalizeAngle, viewYawForCharacter } from '../uvce/core/directions.ts';
@@ -14,7 +14,8 @@ import { LayeredCharacterRenderer } from '../uvce/render/webgl/layered-renderer.
 import { GpuTimer } from './gpu-timer.ts';
 import { DebugOverlay, type OverlayOptions } from './overlay.ts';
 import type { AppParams } from './params.ts';
-import { PARITY, type Stage, createParityStage, createPixelCamera, createStage, createStudioStage } from './stage.ts';
+import { PARITY_CAMERA_CENTER, PARITY_VARIANTS, type ParityCharacter, parityCharacterZ } from './parity-scenes.ts';
+import { type ParityStage, type Stage, createParityStage, createPixelCamera, createStage, createStudioStage } from './stage.ts';
 
 export interface EnvironmentInfo {
   glVersion: string;
@@ -93,6 +94,7 @@ export class UvceApp {
   controls: OrbitControls | null = null;
   stage: Stage;
   members: CrowdMember[] = [];
+  private parityCharacters: ParityCharacter[] = [];
   instances: CharacterInstance[] = [];
   count: number;
   seed: number;
@@ -151,9 +153,10 @@ export class UvceApp {
     this.registry = new SourceAssetRegistry(this.index, opts.assetBaseUrl, textureLoader(this.three, this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest')));
     const parity = this.params.scene === 'parity';
     const pixel = parity || this.params.scene === 'studio';
-    this.stage = parity ? createParityStage(this.scene) : pixel ? createStudioStage(this.scene) : createStage(this.scene);
-    this.camera = pixel ? createPixelCamera(1280, 720, this.pixelsPerUnit, PARITY.cameraCenter) : new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 120);
+    this.stage = parity ? createParityStage(this.scene, PARITY_VARIANTS[this.params.variant]) : pixel ? createStudioStage(this.scene) : createStage(this.scene);
+    this.camera = pixel ? createPixelCamera(1280, 720, this.pixelsPerUnit, PARITY_CAMERA_CENTER) : new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 120);
     this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel });
+    for (const s of (this.stage as Partial<ParityStage>).sortables ?? []) this.characters.addSortedObject(s.id, s.object);
     for (const layer of this.params.hide) this.characters.setLayerHidden(layer, true);
     this.overlay = new DebugOverlay(opts.overlayCanvas);
     this.overlayOptions = { pivots: this.params.debug, sockets: this.params.debug, layerBoxes: this.params.debug, ranks: false };
@@ -171,7 +174,8 @@ export class UvceApp {
     }
     this.rebuildCrowd();
     this.frameCamera();
-    if (this.params.heroDirection) this.setHeroDirection(this.params.heroDirection);
+    // Parity characters already carry their facing (variant spec or `dir`); don't override it here.
+    if (this.params.heroDirection && this.params.scene !== 'parity') this.setHeroDirection(this.params.heroDirection);
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -235,17 +239,15 @@ export class UvceApp {
   private rebuildCrowd(): void {
     if (this.params.scene === 'parity') {
       // Ortho camera looks north (view yaw 0): facing = direction sector centre.
-      this.members = PARITY.characters.map((c, i) => ({
+      this.parityCharacters = PARITY_VARIANTS[this.params.variant].elements.filter((e): e is ParityCharacter => e.kind === 'character');
+      this.members = this.parityCharacters.map((c) => ({
         entityId: c.id,
         x: c.x,
-        z: c.z,
-        facingYaw: directionCenterYaw(this.params.heroDirection ?? 'SE'),
-        clipId: this.params.heroClip ?? 'idle',
+        z: parityCharacterZ(c, this.simTimeMs),
+        facingYaw: directionCenterYaw(c.facing ?? this.params.heroDirection ?? 'SE'),
+        clipId: c.clip ?? this.params.heroClip ?? 'idle',
         phaseOffsetMs: 0,
-        appearance:
-          i === 0
-            ? this.heroState.appearance
-            : { ...heroAppearance(), slots: { ...heroAppearance().slots, hair: { itemId: 'hair_02' }, hat: { itemId: 'hat_03' }, armor: { itemId: 'armor_03' }, weapon: { itemId: 'weapon_02' } } },
+        appearance: c.appearance === 'hero' ? this.heroState.appearance : companionAppearance(),
         patrol: null,
       }));
     } else if (this.params.scene === 'studio') {
@@ -259,12 +261,13 @@ export class UvceApp {
     } else {
       this.members = generateCrowd(this.index, { count: this.count, seed: this.seed });
     }
+    const parity = this.params.scene === 'parity';
     this.instances = this.members.map((m, i) => ({
       entityId: m.entityId,
       position: { x: m.x, y: 0, z: m.z },
-      facingYaw: i === 0 && this.params.scene !== 'parity' ? this.heroState.facingYaw : m.facingYaw,
+      facingYaw: i === 0 && !parity ? this.heroState.facingYaw : m.facingYaw,
       appearance: i === 0 ? this.heroState.appearance : m.appearance,
-      animation: i === 0 ? this.heroState.animation : { clipId: m.clipId, clipStartMs: 0, speed: 1, phaseOffsetMs: m.phaseOffsetMs },
+      animation: i === 0 && !parity ? this.heroState.animation : { clipId: m.clipId, clipStartMs: 0, speed: 1, phaseOffsetMs: m.phaseOffsetMs },
       visible: true,
     }));
   }
@@ -324,6 +327,10 @@ export class UvceApp {
   }
 
   private updateWorld(): void {
+    this.parityCharacters.forEach((c, i) => {
+      const inst = this.instances[i];
+      if (inst) inst.position.z = parityCharacterZ(c, this.simTimeMs);
+    });
     for (let i = 1; i < this.members.length; i++) {
       const m = this.members[i] as CrowdMember;
       if (!m.patrol) continue;

@@ -51,6 +51,12 @@ export function heroAppearance(): AppearanceDefinition {
   };
 }
 
+/** Second fixed look used by overlap / parity scenes. */
+export function companionAppearance(): AppearanceDefinition {
+  const base = heroAppearance();
+  return { ...base, slots: { ...base.slots, hair: { itemId: 'hair_02' }, hat: { itemId: 'hat_03' }, armor: { itemId: 'armor_03' }, weapon: { itemId: 'weapon_02' } } };
+}
+
 /** Grid cells around the origin ordered by distance, then angle-free deterministic tie-break (x, z). */
 function gridCells(n: number): { gx: number; gz: number }[] {
   const out: { gx: number; gz: number }[] = [];

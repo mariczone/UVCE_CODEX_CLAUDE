@@ -101,6 +101,8 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private readonly records = new Map<string, CharacterRecord>();
   private readonly resolvedCache = new WeakMap<AppearanceDefinition, { resolved: ResolvedAppearance | null; key: string; issues: Issue[] }>();
   private readonly hiddenLayers = new Set<string>();
+  /** Transparent world objects ranked in the same painter sort as characters (glass, water, bridges). */
+  private readonly sortables = new Map<string, { group: THREE.Group; anchor: THREE.Object3D; depth: number; rank: number }>();
   private hiddenRevision = 0;
   private frame = 0;
   private readonly frustum = new THREE.Frustum();
@@ -160,6 +162,27 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     if (hidden) this.hiddenLayers.add(layer);
     else this.hiddenLayers.delete(layer);
     this.hiddenRevision++;
+  }
+
+  /**
+   * Registers a transparent world object for painter sorting with the characters. Its depth is the view depth of
+   * its world position (use the ground-contact point for upright objects, like character feet). Opaque objects
+   * do not need this: they are depth-tested in the opaque pass.
+   */
+  addSortedObject(id: string, object: THREE.Object3D): void {
+    this.removeSortedObject(id);
+    const group = new THREE.Group();
+    group.name = `sorted:${id}`;
+    group.add(object);
+    this.root.add(group);
+    this.sortables.set(id, { group, anchor: object, depth: 0, rank: 0 });
+  }
+
+  removeSortedObject(id: string): void {
+    const s = this.sortables.get(id);
+    if (!s) return;
+    this.root.remove(s.group);
+    this.sortables.delete(id);
   }
 
   get hidden(): ReadonlySet<string> {
@@ -339,14 +362,31 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       visible.push(rec);
     }
     for (const rec of [...this.records.values()]) if (rec.seenFrame !== this.frame) this.destroyRecord(rec);
-    // Painter order: farthest foot first; entity id breaks ties so equal depths never flicker.
-    visible.sort((a, b) => b.depth - a.depth || (a.entityId < b.entityId ? -1 : a.entityId > b.entityId ? 1 : 0));
+    // Painter order: farthest first (character feet / sortable anchors); id breaks ties so equal depths never flicker.
+    const ranked: { key: string; depth: number; apply(rank: number): void }[] = visible.map((rec) => ({
+      key: rec.entityId,
+      depth: rec.depth,
+      apply: (rank: number) => {
+        rec.rank = rank;
+        rec.group.renderOrder = rank;
+      },
+    }));
+    for (const [id, s] of this.sortables) {
+      s.anchor.updateWorldMatrix(true, false);
+      s.depth = -this.tmp.setFromMatrixPosition(s.anchor.matrixWorld).applyMatrix4(camera.matrixWorldInverse).z;
+      ranked.push({
+        key: `obj:${id}`,
+        depth: s.depth,
+        apply: (rank: number) => {
+          s.rank = rank;
+          s.group.renderOrder = rank;
+        },
+      });
+    }
+    ranked.sort((a, b) => b.depth - a.depth || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+    ranked.forEach((r, i) => r.apply(i + 1));
     let layers = 0;
-    visible.forEach((rec, i) => {
-      rec.rank = i + 1;
-      rec.group.renderOrder = rec.rank;
-      for (const l of rec.layers) if (l.mesh.visible) layers++;
-    });
+    for (const rec of visible) for (const l of rec.layers) if (l.mesh.visible) layers++;
     const reg = this.registry.stats();
     this.metrics = {
       ...this.emptyMetrics(),
@@ -384,13 +424,16 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     };
   }
 
-  /** Visible characters in painter order (back to front). */
+  /** Visible characters (and registered transparent objects, prefixed "obj:") in painter order, back to front. */
   paintOrder(): string[] {
-    return [...this.records.values()].filter((r) => r.group.visible).sort((a, b) => a.rank - b.rank).map((r) => r.entityId);
+    const entries = [...this.records.values()].filter((r) => r.group.visible).map((r) => ({ key: r.entityId, rank: r.rank }));
+    for (const [id, s] of this.sortables) entries.push({ key: `obj:${id}`, rank: s.rank });
+    return entries.sort((a, b) => a.rank - b.rank).map((e) => e.key);
   }
 
   dispose(): void {
     for (const rec of [...this.records.values()]) this.destroyRecord(rec);
+    for (const id of [...this.sortables.keys()]) this.removeSortedObject(id);
     this.root.removeFromParent();
     this.shadowRoot.removeFromParent();
     this.quad.dispose();

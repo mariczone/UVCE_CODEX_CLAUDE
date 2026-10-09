@@ -1,5 +1,6 @@
 /** Small 3D stage: lit ground + opaque props that test sprite occlusion (wall, pillars, arch). */
 import * as THREE from 'three';
+import { PARITY_CLEAR, type ParityVariant } from './parity-scenes.ts';
 
 export interface Stage {
   objects: THREE.Object3D[];
@@ -78,39 +79,47 @@ export function createStage(scene: THREE.Scene): Stage {
   };
 }
 
-/**
- * Pixel-parity test stage: flat unlit colours only, so the expected image can be computed exactly on the CPU.
- * World units are multiples of 1/128 so every edge lands on a pixel boundary with the pixel camera.
- */
-export const PARITY = {
-  clearColor: '#3a404a',
-  wall: { color: '#5a6f8f', center: [1.0, 0.75, -1.0], size: [1.0, 1.5, 0.1] },
-  // Between the characters in depth: hides the back character's legs, the front one draws over it.
-  box: { color: '#c04848', center: [-0.0625, 0.3125, 0.25], size: [0.5, 0.5, 0.1] },
-  characters: [
-    { id: 'hero', x: 0, z: 0 },
-    { id: 'npc-front', x: 40 / 128, z: 0.5 },
-  ],
-  cameraCenter: [0, 1.0] as const,
-} as const;
+/** A transparent world object that must be depth-sorted together with the characters. */
+export interface SortableObject {
+  id: string;
+  object: THREE.Object3D;
+}
 
-export function createParityStage(scene: THREE.Scene): Stage {
+export interface ParityStage extends Stage {
+  sortables: SortableObject[];
+}
+
+/**
+ * Pixel-parity test stage built from a declarative variant (src/app/parity-scenes.ts): flat unlit colours only,
+ * so the expected image can be computed exactly on the CPU. Opaque boxes are normal scene meshes (depth-tested);
+ * translucent boxes are returned as sortables for the character painter sort.
+ */
+export function createParityStage(scene: THREE.Scene, variant: ParityVariant): ParityStage {
   const objects: THREE.Object3D[] = [];
   const disposables: { dispose(): void }[] = [];
-  scene.background = new THREE.Color(PARITY.clearColor);
-  for (const spec of [PARITY.wall, PARITY.box]) {
-    const g = new THREE.BoxGeometry(spec.size[0], spec.size[1], spec.size[2]);
-    const m = new THREE.MeshBasicMaterial({ color: spec.color });
+  const sortables: SortableObject[] = [];
+  scene.background = new THREE.Color(PARITY_CLEAR);
+  for (const e of variant.elements) {
+    if (e.kind !== 'box') continue;
+    const g = new THREE.BoxGeometry(e.size[0], e.size[1], e.size[2]);
+    const translucent = e.opacity !== undefined && e.opacity < 1;
+    const m = new THREE.MeshBasicMaterial({ color: e.color, transparent: translucent, opacity: e.opacity ?? 1, depthWrite: !translucent });
     const mesh = new THREE.Mesh(g, m);
-    mesh.position.set(spec.center[0], spec.center[1], spec.center[2]);
-    scene.add(mesh);
-    objects.push(mesh);
+    mesh.name = e.id;
+    mesh.position.set(e.center[0], e.center[1], e.center[2]);
     disposables.push(g, m);
+    if (translucent) sortables.push({ id: e.id, object: mesh });
+    else {
+      scene.add(mesh);
+      objects.push(mesh);
+    }
   }
   return {
     objects,
+    sortables,
     dispose() {
       for (const o of objects) scene.remove(o);
+      for (const s2 of sortables) s2.object.removeFromParent();
       for (const d of disposables) d.dispose();
     },
   };
@@ -128,6 +137,6 @@ export function createPixelCamera(width: number, height: number, pixelsPerUnit: 
 
 /** Studio: flat background only (screenshots / visual review through the real GPU path). */
 export function createStudioStage(scene: THREE.Scene): Stage {
-  scene.background = new THREE.Color(PARITY.clearColor);
+  scene.background = new THREE.Color(PARITY_CLEAR);
   return { objects: [], dispose() {} };
 }

@@ -5,11 +5,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { type RgbaImage, diffImages } from '../../src/uvce/compositor/rgba.ts';
-import { PARITY } from '../../src/app/stage.ts';
 import { loadCompiledAssets } from '../../tools/uvce/compiled-loader.ts';
 import { decodePng, encodePng } from '../../tools/uvce/png.ts';
-import { buildParityExpected } from '../support/parity-expected.ts';
-import { openApp } from './helpers.ts';
+import { buildParityExpected, parityPaintOrder } from '../support/parity-expected.ts';
+import { api, openApp } from './helpers.ts';
 
 const TOLERANCE = 3; // 8-bit units per channel: premultiply-on-upload + blend rounding (observed max 2 on SwiftShader)
 const CASES = [
@@ -54,11 +53,44 @@ test.describe('GPU vs CPU reference parity', () => {
     // 2) The box really occludes the back character: an expectation that ignores depth (box drawn first)
     //    differs from the correct one, and the GPU output matches only the correct one.
     const actual = await capture(page, 'scene=parity&test=1&dir=SE');
-    const noDepth = buildParityExpected(assets, { ...opts, boxBehindEverything: true });
+    const noDepth = buildParityExpected(assets, { ...opts, drawFirst: ['box'] });
     const occluded = diffImages(noDepth, expected, TOLERANCE).mismatched;
     expect(occluded).toBeGreaterThan(800);
     expect(diffImages(actual, noDepth, TOLERANCE).mismatched).toBeGreaterThan(occluded * 0.95);
     expect(diffImages(actual, expected, TOLERANCE).mismatched).toBe(0);
-    expect(PARITY.characters).toHaveLength(2);
+  });
+
+  // Milestone 1 scene variants: crossing characters, arch occlusion, translucent glass sorted with sprites.
+  const VARIANT_CASES = [
+    { variant: 'crossing', timeMs: 400, order: ['hero', 'npc-static'] }, // hero still behind the companion
+    { variant: 'crossing', timeMs: 2000, order: ['npc-static', 'hero'] }, // after crossing: hero in front
+    { variant: 'arch', timeMs: 0, order: ['hero', 'npc-front'] },
+    { variant: 'glass', timeMs: 0, order: ['hero', 'obj:glass', 'npc-front'] },
+  ] as const;
+  for (const c of VARIANT_CASES) {
+    test(`variant ${c.variant} t=${c.timeMs}ms: painter order and pixels match the reference`, async ({ page }) => {
+      const assets = await loadCompiledAssets('public/uvce-compiled');
+      const actual = await capture(page, `scene=parity&variant=${c.variant}&test=1&dir=SE&t=${c.timeMs}`);
+      expect(await api(page, (u) => u.paintOrder())).toEqual(c.order);
+      const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, variant: c.variant, direction: 'SE', clipId: 'idle', timeMs: c.timeMs, pixelsPerUnit: 128 });
+      const diff = diffImages(actual, expected, TOLERANCE);
+      if (diff.mismatched > 0) await saveArtifacts(`${c.variant}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
+      expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
+    });
+  }
+
+  test('negative controls for the variants: wrong crossing order and unsorted glass are detectable', async ({ page }) => {
+    const assets = await loadCompiledAssets('public/uvce-compiled');
+    const base = { width: 1280, height: 720, direction: 'SE' as const, clipId: 'idle', pixelsPerUnit: 128 };
+    // Crossing: the order really flips between the two sampled times.
+    expect(parityPaintOrder('crossing', 400).map((e) => e.id)).toEqual(['wall', 'hero', 'npc-static']);
+    expect(parityPaintOrder('crossing', 2000).map((e) => e.id)).toEqual(['wall', 'npc-static', 'hero']);
+    const late = await capture(page, 'scene=parity&variant=crossing&test=1&t=2000');
+    const stale = buildParityExpected(assets, { ...base, variant: 'crossing', timeMs: 2000, drawFirst: ['hero'] });
+    expect(diffImages(late, stale, TOLERANCE).mismatched).toBeGreaterThan(300);
+    // Glass: drawing it before all sprites (what three.js does for an unsorted transparent mesh) differs.
+    const glass = await capture(page, 'scene=parity&variant=glass&test=1&dir=SE');
+    const unsorted = buildParityExpected(assets, { ...base, variant: 'glass', timeMs: 0, drawFirst: ['glass'] });
+    expect(diffImages(glass, unsorted, TOLERANCE).mismatched).toBeGreaterThan(300);
   });
 });

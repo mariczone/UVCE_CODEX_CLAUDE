@@ -1,4 +1,5 @@
 import { type Direction8, isDirection8 } from '../uvce/core/directions.ts';
+import { type ParityVariantId, isParityVariant } from './parity-scenes.ts';
 
 /** stage = lit 3D scene; parity = pixel-exact test scene; studio = pixel camera, flat background, hero only. */
 export type SceneKind = 'stage' | 'parity' | 'studio';
@@ -7,6 +8,8 @@ export type SceneKind = 'stage' | 'parity' | 'studio';
 export interface AppParams {
   test: boolean;
   scene: SceneKind;
+  /** Parity scene variant (scene=parity). */
+  variant: ParityVariantId;
   count: number;
   seed: number;
   timeMs: number;
@@ -42,6 +45,7 @@ export function parseParams(search: string): AppParams {
   return {
     test,
     scene,
+    variant: isParityVariant(q.get('variant')) ? (q.get('variant') as ParityVariantId) : 'default',
     count: Math.max(scene === 'parity' ? 2 : 1, Math.min(1000, Math.floor(num('count', scene === 'parity' ? 2 : 1)))),
     seed: Math.floor(num('seed', 20261009)) >>> 0,
     timeMs: num('t', 0),
