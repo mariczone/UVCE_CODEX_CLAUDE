@@ -41,7 +41,7 @@ const opt = (name: string, d: string): string => {
 const counts = opt('--counts', '1,20,100,300').split(',').map(Number);
 const runs = Number(opt('--runs', '3'));
 const warmupMs = Number(opt('--warmup-ms', '2000'));
-const measureMs = Number(opt('--measure-ms', '5000'));
+const measureMs = Number(opt('--measure-ms', '15000'));
 const width = Number(opt('--width', '1920'));
 const height = Number(opt('--height', '1080'));
 const seed = Number(opt('--seed', '20261009'));
@@ -54,14 +54,16 @@ const median = (v: number[]): number => {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? (s[m] as number) : ((s[m - 1] as number) + (s[m] as number)) / 2;
 };
-const r2 = (v: number): number | null => (Number.isFinite(v) ? Math.round(v * 100) / 100 : null);
+const r2 = (v: number): number | null => (Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null);
 
-async function runOnce(page: Page, base: string, count: number): Promise<{ snap: Snapshot; readyMs: number; pageBytes: number }> {
-  let pageBytes = 0;
-  const onResponse = async (r: { url(): string; body(): Promise<Buffer> }): Promise<void> => {
-    if (/\/uvce-compiled\//.test(r.url())) pageBytes += (await r.body().catch(() => Buffer.alloc(0))).byteLength;
-  };
-  page.on('response', onResponse);
+interface Transfer {
+  requests: number;
+  pageRequests: number;
+  encodedBytes: number;
+  decodedBytes: number;
+}
+
+async function runOnce(page: Page, base: string, count: number): Promise<{ snap: Snapshot; readyMs: number; transfer: Transfer }> {
   const t0 = Date.now();
   await page.goto(`${base}/?bench=1&count=${count}&seed=${seed}`);
   await page.waitForFunction(() => (window as unknown as { __UVCE__?: { ready?: boolean } }).__UVCE__?.ready === true, null, { timeout: 120_000 });
@@ -70,8 +72,8 @@ async function runOnce(page: Page, base: string, count: number): Promise<{ snap:
   await page.evaluate(() => (window as unknown as { __UVCE__: { resetStats(): void } }).__UVCE__.resetStats());
   await page.waitForTimeout(measureMs);
   const snap = await page.evaluate(() => (window as unknown as { __UVCE__: { snapshot(): unknown } }).__UVCE__.snapshot());
-  page.off('response', onResponse);
-  return { snap: snap as Snapshot, readyMs, pageBytes };
+  const transfer = await page.evaluate(() => (window as unknown as { __UVCE__: { assetTransfer(): unknown } }).__UVCE__.assetTransfer());
+  return { snap: snap as Snapshot, readyMs, transfer: transfer as Transfer };
 }
 
 const git = (cmd: string): string => {
@@ -82,6 +84,9 @@ const git = (cmd: string): string => {
   }
 };
 
+// Record the code state BEFORE this run writes any output (outputs would mark the tree dirty).
+const commit = git('git rev-parse HEAD');
+const workingTree = git('git status --porcelain') === '' ? 'clean' : 'dirty';
 const server = await startPreviewServer(4177);
 const browser = await launchChromium({ swiftshader, headed: args.includes('--headed') });
 try {
@@ -89,7 +94,7 @@ try {
   const scenarios: Record<string, unknown>[] = [];
   let env: Record<string, unknown> = {};
   for (const count of counts) {
-    const perRun: { snap: Snapshot; readyMs: number; pageBytes: number }[] = [];
+    const perRun: { snap: Snapshot; readyMs: number; transfer: Transfer }[] = [];
     for (let run = 0; run < runs; run++) {
       const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
       const page = await context.newPage();
@@ -115,11 +120,15 @@ try {
       cpuRenderSubmitMs: { p50: pick((r) => r.snap.renderSubmitCpu.p50), p95: pick((r) => r.snap.renderSubmitCpu.p95), p99: pick((r) => r.snap.renderSubmitCpu.p99) },
       cpuTotalMs: { p50: pick((r) => r.snap.totalCpu.p50), p95: pick((r) => r.snap.totalCpu.p95), p99: pick((r) => r.snap.totalCpu.p99) },
       rafIntervalMs: { p50: pick((r) => r.snap.frameInterval.p50), p95: pick((r) => r.snap.frameInterval.p95) },
-      gpuTimerQueryMs: perRun.every((r) => r.snap.gpuTimer.samples > 0) ? { p50: pick((r) => r.snap.gpuTimer.p50), p95: pick((r) => r.snap.gpuTimer.p95) } : null,
+      gpuTimerQueryMs: perRun.every((r) => r.snap.gpuTimer.samples > 0)
+        ? { p50: pick((r) => r.snap.gpuTimer.p50), p95: pick((r) => r.snap.gpuTimer.p95), samplesPerRun: perRun.map((r) => r.snap.gpuTimer.samples) }
+        : null,
       residentPages: pick((r) => r.snap.registry.resident),
       pageLoads: pick((r) => r.snap.registry.loads),
       sourceRGBA8MiB: pick((r) => r.snap.registry.residentBytesRGBA8 / 1048576),
-      downloadedAssetKiB: pick((r) => r.pageBytes / 1024),
+      assetRequests: pick((r) => r.transfer.requests),
+      pageRequests: pick((r) => r.transfer.pageRequests),
+      downloadedAssetKiB: pick((r) => r.transfer.encodedBytes / 1024),
       timeToReadyMs: pick((r) => r.readyMs),
     });
   }
@@ -128,9 +137,19 @@ try {
     kind: 'uvce-baseline-benchmark',
     renderMode: 'LAYERED',
     date: new Date().toISOString(),
-    commit: git('git rev-parse HEAD'),
-    workingTree: git('git status --porcelain') === '' ? 'clean' : 'dirty',
-    protocol: { counts, runs, warmupMs, measureMs, viewport: { width, height, deviceScaleFactor: 1 }, seed, chromiumArgs: swiftshader ? SWIFTSHADER_ARGS : [], scene: 'stage (perspective camera, framing per count), animation playing, overlay+panel disabled (bench=1)' },
+    commit,
+    workingTree,
+    protocol: {
+      counts,
+      runs,
+      warmupMs,
+      measureMs,
+      viewport: { width, height, deviceScaleFactor: 1 },
+      seed,
+      chromiumArgs: swiftshader ? SWIFTSHADER_ARGS : [],
+      scene: 'stage scene, perspective camera framed per count, animation playing, MSAA on, overlay and side panel off (bench=1, canvas = full viewport)',
+      aggregation: 'per run: nearest-rank percentiles over all frames in the window; reported: median across runs',
+    },
     environment: {
       browser: `Chromium ${browser.version()}`,
       ...env,
@@ -146,16 +165,17 @@ try {
         ? 'Rendered with ANGLE/SwiftShader (CPU software rasterizer) in a headless container: rAF interval and GPU-timer values measure software rasterisation, NOT a GPU. No FPS claim is made.'
         : 'Rendered on the local GPU; results are specific to the recorded browser/GPU/driver.',
       'CPU update = character prepare (resolve/cull/sort) + world update; CPU submit = three.js render() call on the main thread (command encoding, not GPU execution).',
+      'CPU submit can include command-buffer back-pressure when the (software) GPU process falls behind.',
       'Draw calls include world props and one ground-shadow decal per visible character.',
       'Byte figures are owner-calculated RGBA8 estimates of resident source pages, not measured VRAM.',
     ],
   };
   await writeFile(`${outDir}/summary.json`, `${JSON.stringify(summary, null, 2)}\n`);
-  const header = 'count,visible_characters,visible_layers,draw_calls,cpu_update_p50_ms,cpu_update_p95_ms,cpu_submit_p50_ms,cpu_submit_p95_ms,cpu_total_p50_ms,cpu_total_p95_ms,cpu_total_p99_ms,raf_interval_p50_ms,raf_interval_p95_ms,gpu_timer_p50_ms,resident_pages,source_rgba8_mib,downloaded_kib,time_to_ready_ms';
+  const header = 'count,visible_characters,visible_layers,draw_calls,cpu_update_p50_ms,cpu_update_p95_ms,cpu_submit_p50_ms,cpu_submit_p95_ms,cpu_total_p50_ms,cpu_total_p95_ms,cpu_total_p99_ms,raf_interval_p50_ms,raf_interval_p95_ms,gpu_timer_p50_ms,resident_pages,page_requests,source_rgba8_mib,downloaded_kib,time_to_ready_ms';
   const rows = scenarios.map((s) => {
     const g = s as Record<string, Record<string, number | null> | number | null>;
     const o = (k: string, f: string): string => String(((g[k] as Record<string, number | null> | null) ?? {})[f] ?? '');
-    return [g.count, g.visibleCharacters, g.visibleLayers, g.drawCalls, o('cpuUpdateMs', 'p50'), o('cpuUpdateMs', 'p95'), o('cpuRenderSubmitMs', 'p50'), o('cpuRenderSubmitMs', 'p95'), o('cpuTotalMs', 'p50'), o('cpuTotalMs', 'p95'), o('cpuTotalMs', 'p99'), o('rafIntervalMs', 'p50'), o('rafIntervalMs', 'p95'), o('gpuTimerQueryMs', 'p50'), g.residentPages, g.sourceRGBA8MiB, g.downloadedAssetKiB, g.timeToReadyMs].join(',');
+    return [g.count, g.visibleCharacters, g.visibleLayers, g.drawCalls, o('cpuUpdateMs', 'p50'), o('cpuUpdateMs', 'p95'), o('cpuRenderSubmitMs', 'p50'), o('cpuRenderSubmitMs', 'p95'), o('cpuTotalMs', 'p50'), o('cpuTotalMs', 'p95'), o('cpuTotalMs', 'p99'), o('rafIntervalMs', 'p50'), o('rafIntervalMs', 'p95'), o('gpuTimerQueryMs', 'p50'), g.residentPages, g.pageRequests, g.sourceRGBA8MiB, g.downloadedAssetKiB, g.timeToReadyMs].join(',');
   });
   await writeFile(`${outDir}/summary.csv`, `${header}\n${rows.join('\n')}\n`);
   console.log(`[bench] wrote ${outDir}/summary.json, summary.csv and ${counts.length} screenshots`);

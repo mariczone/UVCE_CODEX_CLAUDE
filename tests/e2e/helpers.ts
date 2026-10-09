@@ -4,7 +4,7 @@ import { type Page, expect } from '@playwright/test';
 export interface UvceTestApi {
   ready: boolean;
   error: string | null;
-  environment(): { glVersion: string; glRenderer: string; webgpuAdapter: string; viewport: { width: number; height: number } };
+  environment(): { glVersion: string; glRenderer: string; webgpuAdapter: string; crossOriginIsolated: boolean; viewport: { width: number; height: number } };
   snapshot(): {
     drawCalls: number;
     triangles: number;

@@ -9,6 +9,7 @@ test.describe('app boot and scene', () => {
     await openApp(page, 'test=1');
     const env = await api(page, (u) => u.environment());
     expect(env.glVersion).toContain('WebGL 2.0');
+    expect(env.crossOriginIsolated).toBe(true); // COOP/COEP => fine-grained performance.now() for metrics
     const snap = await api(page, (u) => u.snapshot());
     expect(snap.character.visibleCharacters).toBe(1);
     // SE default look: hair_back, body, armor, arm_front, head, hair_front, hat, weapon

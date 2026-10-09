@@ -30,6 +30,8 @@ export interface EnvironmentInfo {
   viewport: { width: number; height: number };
   userAgent: string;
   hardwareConcurrency: number;
+  /** True => performance.now() has ~5 us resolution (COOP/COEP); false => ~100 us in Chromium. */
+  crossOriginIsolated: boolean;
 }
 
 export interface FrameSnapshot {
@@ -144,6 +146,7 @@ export class UvceApp {
       viewport: { width: 0, height: 0 },
       userAgent: navigator.userAgent,
       hardwareConcurrency: navigator.hardwareConcurrency,
+      crossOriginIsolated: window.crossOriginIsolated === true,
     };
     this.registry = new SourceAssetRegistry(this.index, opts.assetBaseUrl, textureLoader(this.three, this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest')));
     const parity = this.params.scene === 'parity';

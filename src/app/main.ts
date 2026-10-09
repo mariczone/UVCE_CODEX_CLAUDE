@@ -30,6 +30,7 @@ async function main(): Promise<void> {
   window.__UVCE__ = status;
   document.body.classList.toggle('parity', params.scene === 'parity');
   document.body.classList.toggle('studio', params.scene === 'studio');
+  document.body.classList.toggle('bench', params.bench);
   document.body.classList.toggle('test', params.test);
   if (!webgl2Available()) {
     status.error = 'WebGL2 unavailable';
@@ -88,6 +89,17 @@ async function main(): Promise<void> {
     },
     paintOrder: () => app.characters.paintOrder(),
     pageStatuses: () => app.registry.pageStatuses(),
+    /** Browser-measured transfer of compiled assets (Resource Timing), for benchmarks. */
+    assetTransfer: () => {
+      const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+      const assets = entries.filter((e) => e.name.includes('/uvce-compiled/'));
+      return {
+        requests: assets.length,
+        pageRequests: assets.filter((e) => e.name.includes('/pages/')).length,
+        encodedBytes: assets.reduce((s, e) => s + e.encodedBodySize, 0),
+        decodedBytes: assets.reduce((s, e) => s + e.decodedBodySize, 0),
+      };
+    },
   };
   app.start();
   await app.waitForIdle();

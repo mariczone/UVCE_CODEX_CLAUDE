@@ -46,7 +46,7 @@ input[type='number'] { width: 110px; }
 .features { padding-left: 0; list-style: none; font-size: 11px; margin: 0; }
 .features li.on { color: #6ee7a8; }
 .features li.off { color: var(--muted); }
-body.parity #panel, body.studio #panel { display: none; }
+body.parity #panel, body.studio #panel, body.bench #panel { display: none; }
 @media (max-width: 760px) {
   #app { flex-direction: column; }
   #viewport { min-height: 60vh; }
