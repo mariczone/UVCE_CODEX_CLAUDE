@@ -28,7 +28,7 @@ export function composePose(
       y: layer.region.y,
       w: layer.region.w,
       h: layer.region.h,
-    });
+    }, layer.mirror);
   }
   return target;
 }

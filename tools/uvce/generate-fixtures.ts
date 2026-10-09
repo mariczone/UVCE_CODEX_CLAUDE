@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DIRECTIONS, type Direction8, byDirection } from '../../src/uvce/core/directions.ts';
 import { formatIssues } from '../../src/uvce/core/issues.ts';
+import { MIRROR_SOURCE } from '../../src/uvce/core/mirror.ts';
 import type { RgbaImage } from '../../src/uvce/compositor/rgba.ts';
 import { drawArmFrontLayer, drawArmor, drawBodyLayer, drawHairBack, drawHairFront, drawHat, drawHeadLayer, drawWeapon } from './fixture-art.ts';
 import { computeBodyPose, restSockets } from './fixture-pose.ts';
@@ -67,7 +68,8 @@ export async function generateFixtures(options: GenerateOptions): Promise<Genera
   for (const spec of ITEMS) {
     const parts: SourcePart[] = [];
     for (const partSpec of spec.parts) {
-      const part: SourcePart = { layer: partSpec.layer, attach: partSpec.attach, representation: 'FRAME', allowMirror: false };
+      const mirror = spec.mirror === true;
+      const part: SourcePart = { layer: partSpec.layer, attach: partSpec.attach, representation: 'FRAME', allowMirror: mirror };
       if (partSpec.animated) {
         const clips: NonNullable<SourcePart['clips']> = {};
         for (const clip of CLIPS) {
@@ -90,6 +92,7 @@ export async function generateFixtures(options: GenerateOptions): Promise<Genera
       } else {
         const stat: NonNullable<SourcePart['static']> = {};
         for (const dir of DIRECTIONS) {
+          if (mirror && MIRROR_SOURCE[dir]) continue; // derived by the compiler
           const image = staticImage(spec.id, partSpec.layer, dir, seed);
           if (!image) continue;
           const file = `${spec.id}/${partSpec.layer}/static/${dir}.png`;

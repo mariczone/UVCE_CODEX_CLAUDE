@@ -33,6 +33,11 @@ export const compiledFrameSchema = z.strictObject({
   anchor: vec2Schema,
   /** Per-frame socket positions; only on frames of the rig's socket-driver layer. */
   sockets: z.record(idSchema, vec2Schema).optional(),
+  /**
+   * Draw the image horizontally flipped (a direction derived from its mirror source, see core/mirror.ts). trim, anchor
+   * and sockets are already mirrored; only the texture lookup flips.
+   */
+  mirror: z.literal(true).optional(),
 });
 export type CompiledFrame = z.infer<typeof compiledFrameSchema>;
 
@@ -241,6 +246,7 @@ export function validateCompiledManifestSemantics(m: CompiledManifest): Issue[] 
         if (part.attach === ROOT_SOCKET && (frame.anchor.x !== rig.footPivot.x || frame.anchor.y !== rig.footPivot.y)) {
           err('frame.anchor', fp, 'root-attached frames must be anchored at the rig foot pivot');
         }
+        if (frame.mirror && !part.allowMirror) err('frame.mirror', fp, 'mirrored frame in a part without allowMirror');
         if (isDriver) {
           for (const s of rig.sockets) if (!frame.sockets?.[s]) err('frame.sockets', fp, `driver frame lacks socket "${s}"`);
         } else if (frame.sockets) {

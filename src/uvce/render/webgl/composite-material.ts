@@ -96,9 +96,27 @@ export function createBakeMaterial(placeholder: THREE.Texture): THREE.ShaderMate
 
 /** One resident layer to composite (see ResolvedLayer: dest on the canonical canvas, region on its page). */
 export interface CompositeLayerInput {
-  layer: { order: number; dest: { x: number; y: number; w: number; h: number }; region: { x: number; y: number; w: number; h: number } };
+  layer: UvLayer & { order: number; dest: { x: number; y: number; w: number; h: number } };
   page: { width: number; height: number };
   texture: THREE.Texture;
+}
+
+/** The part of a ResolvedLayer that decides its texture coordinates. */
+export interface UvLayer {
+  region: { x: number; y: number; w: number; h: number };
+  /** Optional so hand-built test inputs stay valid; absent = not mirrored. */
+  mirror?: boolean;
+}
+
+/**
+ * UV rect (u0, vTop, u1, vBottom) of a layer's page region grown by the filter margin. A mirrored layer swaps u0 and
+ * u1: the margin is symmetric, so this is an exact horizontal flip of the sampled image inside the (mirrored) quad.
+ */
+export function layerUvRect(layer: UvLayer,page: { width: number; height: number }, m: number, out: THREE.Vector4): THREE.Vector4 {
+  const { region } = layer;
+  const left = (region.x - m) / page.width;
+  const right = (region.x + region.w + m) / page.width;
+  return out.set(layer.mirror ? right : left, 1 - (region.y - m) / page.height, layer.mirror ? left : right, 1 - (region.y + region.h + m) / page.height);
 }
 
 /**
@@ -126,7 +144,7 @@ export function setCompositeLayers(
     const qw = layer.dest.w + 2 * m;
     const qh = layer.dest.h + 2 * m;
     (quads[i] as THREE.Vector4).set(qx, qy, qw, qh);
-    (uvs[i] as THREE.Vector4).set((layer.region.x - m) / page.width, 1 - (layer.region.y - m) / page.height, (layer.region.x + layer.region.w + m) / page.width, 1 - (layer.region.y + layer.region.h + m) / page.height);
+    layerUvRect(layer, page, m, uvs[i] as THREE.Vector4);
     (u[`uMap${i}`] as THREE.IUniform).value = texture;
     x0 = Math.min(x0, qx);
     y0 = Math.min(y0, qy);

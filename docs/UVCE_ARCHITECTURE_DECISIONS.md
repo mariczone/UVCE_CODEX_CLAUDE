@@ -29,8 +29,9 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   different angle), camera forward for orthographic cameras. Relative 0 = we see the back ("N").
 - **Proof:** `tests/unit/directions.test.ts`; e2e `sprite direction is chosen relative to the camera` orbits the
   camera and checks N→S→W for the same world facing.
-- **Mirroring:** not used at runtime (`allowMirror: false` everywhere). The generator mirrors *geometry* for
-  W-facing views but swaps hand semantics (the right hand is the far hand facing west).
+- **Mirroring:** supported since ADR-16 (`allowMirror: true` parts get W/SW/NW from E/SE/NE). The fixture's base
+  items stay fully drawn; the generator mirrors their *geometry* for W-facing views but keeps hand semantics (the
+  right hand is the far hand facing west).
 
 ## ADR-03 Rig, sockets, layers and per-direction painter order
 
@@ -326,3 +327,29 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
 - **Status:** opt-in (`mode=AUTO`). With the gate, AUTO matches SHADER within noise on the RTX 3070 (ABBA order: −4 % to
   +7 %, overlapping ranges, nothing promoted: `docs/benchmark-results/gpu/2026-10-09-rtx3070-auto-gated/`). It becomes
   a default candidate once a fill-limited device shows real pressure and a better frame interval with the planner.
+
+## ADR-16 Mirrored directions (W/SW/NW from E/SE/NE)
+
+- **Decision (owner, 2026-10-09):** real characters are drawn in 5 directions (N NE E SE S); W, SW and NW are the
+  horizontal mirrors of E, SE and NE. Accepted consequences: a right-hand item appears in the left hand in the
+  mirrored views, and asymmetric details flip (the character has few).
+- **Where:** compile time decides, runtime only flips sampling.
+  - `tools/uvce/compiler.ts` `deriveMirroredDirections`: for a part with `allowMirror: true`, each missing mirrored
+    direction becomes a copy of its source frames with the same image key and `mirror: true`. A direction that was
+    drawn explicitly always wins. The mirrored image must stay inside the canvas (`mirror.canvas` error).
+  - Coordinates (`src/uvce/core/mirror.ts`): pixel columns and points `x' = 2·pivot.x − 1 − x` (255 − x at pivot
+    128); rects `x' = 2·pivot.x − (x + w)`; root-attached anchors stay at the pivot. With these rules the placement
+    `trim + socket − anchor` of a mirrored layer is exactly the mirror of the source placement.
+  - Runtime: `ResolvedLayer.mirror`; the CPU reference compositor blits flipped; LAYERED, SHADER and the FULL_CACHE
+    bake swap u0/u1 (`layerUvRect`). The filter margin is symmetric, so the swap is an exact flip.
+  - A fully mirrored character also needs mirrored rig directions (painter order of E for W, mirrored rest sockets):
+    `mirrorRigDirections`. The compiler warns (`mirror.rig`) when a mirrored socket driver meets a rig that is not.
+- **Cost:** no extra texture memory, download or atlas space for the mirrored directions (~37 % fewer images per
+  character); no measurable per-frame CPU/GPU change (the same quads and samples are drawn).
+- **Proof:** `tests/unit/mirror.test.ts`. Math round trips. A fully mirrored build of the fixture set renders
+  W/SW/NW pixel-exactly as the mirror of E/SE/NE (96 composites, 2 looks × 2 clips × 3 pairs × 8 frames). Mirrored
+  layers sample column i as column w−1−i. An explicitly drawn direction wins. The validator rejects `mirror` without
+  `allowMirror`. The rig warning fires.
+  The fixture companion items hair_02, hat_03, armor_03 and weapon_02 are now mirrored (330 → 316 source frames). Only
+  the 48 hashes of the mixed look in W/SW/NW changed; the default-look goldens are unchanged. The e2e W/NW parity cases
+  in LAYERED, SHADER and FULL_CACHE therefore cover mirrored layers on the GPU. Disabling the flip fails 3 tests.

@@ -48,7 +48,7 @@ export function overPixel(dst: Uint8Array, di: number, sr: number, sg: number, s
 }
 
 /** Draws `src` (or its `srcRect`) with its top-left at (dx, dy) using straight-alpha over. Clips to dst. */
-export function blitOver(dst: RgbaImage, src: RgbaImage, dx: number, dy: number, srcRect?: Rect): void {
+export function blitOver(dst: RgbaImage, src: RgbaImage, dx: number, dy: number, srcRect?: Rect, flipX = false): void {
   const sx0 = srcRect?.x ?? 0;
   const sy0 = srcRect?.y ?? 0;
   const w = srcRect?.w ?? src.width;
@@ -59,7 +59,7 @@ export function blitOver(dst: RgbaImage, src: RgbaImage, dx: number, dy: number,
     for (let x = 0; x < w; x++) {
       const tx = dx + x;
       if (tx < 0 || tx >= dst.width) continue;
-      const si = ((sy0 + y) * src.width + sx0 + x) * 4;
+      const si = ((sy0 + y) * src.width + sx0 + (flipX ? w - 1 - x : x)) * 4;
       const a = src.data[si + 3] as number;
       if (a === 0) continue;
       overPixel(dst.data, (ty * dst.width + tx) * 4, src.data[si] as number, src.data[si + 1] as number, src.data[si + 2] as number, a);

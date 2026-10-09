@@ -15,7 +15,7 @@
 | จุดอ้างอิง (foot pivot) | **(128, 228)** = จุดที่เท้าแตะพื้น (กึ่งกลางระหว่างเท้าสองข้าง) วัดจากมุมซ้ายบน แกน y ชี้ลง |
 | สเกล | **128 px = 1 เมตร** ตัวต้นแบบสูงราว 180–200 px |
 | พื้นที่ปลอดภัย | วาดภายในกรอบ **x 8–247, y 8–247** ห้ามแตะขอบผ้าใบ |
-| ทิศ | **8 ทิศ** N NE E SE S SW W NW (S = หันหน้าเข้าหากล้อง, N = หันหลัง, E = หันไปทางขวาของจอ) **ห้ามใช้วิธี mirror** |
+| ทิศ | **8 ทิศ** N NE E SE S SW W NW (S = หันหน้าเข้าหากล้อง, N = หันหลัง, E = หันไปทางขวาของจอ) **วาดแค่ 5 ทิศ N NE E SE S** แล้ว engine กลับภาพเป็น SW W NW ให้ (อาวุธจะอยู่มือซ้ายในทิศที่กลับ) |
 | การแยกชั้น | 8 layer: hair_back, body, arm_front, armor, head, hair_front, hat, weapon แต่ละ layer เป็นไฟล์แยก วางบนผ้าใบ 256² ตำแหน่งเดียวกับตอนประกอบ |
 | ท่าทาง | idle 8 เฟรม, walk 8 เฟรม เฉพาะ **body + arm_front** ที่วาดทุกเฟรม ส่วนชุด อาวุธ หัว และผม วาด **1 ภาพต่อทิศ** |
 | Socket | body ทุกเฟรมต้องบอกตำแหน่ง 6 จุด: head_top, neck, chest, right_hand, left_hand, back |
@@ -28,7 +28,7 @@
 | ไฟล์ | เนื้อหา |
 |---|---|
 | [01-canvas-coordinates.md](01-canvas-coordinates.md) | ผ้าใบ พิกัด foot pivot สเกล พื้นที่ปลอดภัย |
-| [02-directions.md](02-directions.md) | ความหมายของ 8 ทิศ มือซ้ายขวา และเหตุผลที่ห้าม mirror |
+| [02-directions.md](02-directions.md) | ความหมายของ 8 ทิศ มือซ้ายขวา และการ mirror (วาด 5 ทิศ ได้ 8 ทิศ) |
 | [03-rig-layers-sockets.md](03-rig-layers-sockets.md) | layer, slot, ลำดับการวาดต่อทิศ, socket และค่าตำแหน่งจริง |
 | [04-animation.md](04-animation.md) | idle และ walk: จำนวนเฟรม เวลา และ socket ต่อเฟรม |
 | [05-parts.md](05-parts.md) | รายละเอียดแต่ละชิ้น: body, arm_front, head, hair, armor, hat, weapon |
@@ -38,9 +38,9 @@
 
 | โฟลเดอร์ | เนื้อหา |
 |---|---|
-| `templates/guide-<DIR>.png` | ภาพนำทางต่อทิศ: กริด 16 px, กรอบปลอดภัย, เส้นพื้น, foot pivot และจุด socket ของท่าพัก |
+| `templates/guide-<DIR>.png` | ภาพนำทางต่อทิศที่ต้องวาด (N NE E SE S): กริด 16 px, กรอบปลอดภัย, เส้นพื้น, foot pivot และจุด socket ของท่าพัก |
 | `templates/overlay-<DIR>.png` | เส้นนำทางแบบพื้นหลังโปร่งใส ใช้วางเป็น layer บนสุดในโปรแกรมวาด |
-| `templates/guide-sheet-x2.png` | ภาพนำทางทั้ง 8 ทิศเรียงกัน N→NW ขยาย 2 เท่า |
+| `templates/guide-sheet-x2.png` | ภาพนำทาง 5 ทิศที่ต้องวาด (N NE E SE S) เรียงกัน ขยาย 2 เท่า |
 | `templates/source-manifest.example.json` | ตัวอย่าง manifest ที่ผ่าน validator จริง |
 | `examples/raw/` | ไฟล์ layer ตัวอย่างในรูปแบบที่ต้องการทุกประการ (256², RGBA) |
 | `examples/sheets/` | ภาพอธิบาย: 8 ทิศ, การแยกชั้นตามลำดับวาด, socket ในท่าเดิน, การ anchor หมวก |
@@ -52,12 +52,12 @@
 2. **ชุด อาวุธ หัว และผม วาดครั้งเดียวต่อทิศ ในท่าพัก (idle เฟรม 0)**
    engine จะเลื่อนชิ้นพวกนี้ตาม socket ของ body เองในทุกเฟรม จึงไม่ต้องวาดหมวกใหม่ทุกเฟรมของท่าเดิน
 3. **ทุกชิ้นของตัวละครเดียวกันต้องใช้สัดส่วนชุดเดียวกัน** (rig เดียวกัน)
-   ถ้าตัวละครจริงมีสัดส่วนต่างจากตัวตัวอย่าง ทำได้ แต่ต้องส่งตำแหน่ง socket ของท่าพักทั้ง 8 ทิศมาด้วย (ดู 03 และ 07)
+   ถ้าตัวละครจริงมีสัดส่วนต่างจากตัวตัวอย่าง ทำได้ แต่ต้องส่งตำแหน่ง socket ของท่าพัก 5 ทิศ (N NE E SE S) มาด้วย (ดู 03 และ 07)
 
 ## ภาพรวมแบบภาพ
 
-- `examples/sheets/directions-idle.png`: ตัวละครครบชุดใน 8 ทิศ (N NE E SE S SW W NW จากซ้ายไปขวา)
-- `examples/sheets/layer-breakdown-SE.png` และ `-NW.png`: แต่ละ layer แยกกัน เลขบนภาพคือลำดับการวาด (1 = วาดก่อน อยู่หลังสุด) ภาพสุดท้ายคือผลรวม
+- `examples/sheets/directions-idle.png`: ตัวละครครบชุดใน 8 ทิศ (N NE E SE S SW W NW จากซ้ายไปขวา) สามช่องขวาเป็นภาพกลับจาก SE E NE
+- `examples/sheets/layer-breakdown-SE.png` และ `-NE.png`: แต่ละ layer แยกกัน เลขบนภาพคือลำดับการวาด (1 = วาดก่อน อยู่หลังสุด) ภาพสุดท้ายคือผลรวม
 - `examples/sheets/walk-SE-sockets.png`: body ท่าเดิน 8 เฟรม พร้อมจุด socket ของแต่ละเฟรม
 - `examples/sheets/anchor-hat-S.png`: body กับจุด head_top | หมวกเดี่ยวๆ กับจุด anchor | ผลรวม
 

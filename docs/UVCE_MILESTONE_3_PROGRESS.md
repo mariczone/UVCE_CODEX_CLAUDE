@@ -92,5 +92,7 @@ Recorded 2026-10-09 at the owner's request: postponed, not dropped. Each run nee
 2. Done: SHADER is the default (owner decision, commit `b59eaee`).
 3. Done: adaptive planner (`mode=AUTO`), opt-in, with a GPU-pressure gate (frame timing) and O(1) steady-state
    bookkeeping. Open: measure it on a fill-limited GPU (iGPU) to decide whether it becomes the default.
-4. `PARTIAL_CACHE` only for layer groups that never interleave across directions (lowest priority: FULL_CACHE and
+4. Done: mirrored directions ([ADR-16](UVCE_ARCHITECTURE_DECISIONS.md)). Real art is drawn in 5 directions and
+   W/SW/NW come from E/SE/NE at no texture cost; `art-spec/` asks for 5 directions.
+5. `PARTIAL_CACHE` only for layer groups that never interleave across directions (lowest priority: FULL_CACHE and
    SHADER already cover the cases a partial cache would).

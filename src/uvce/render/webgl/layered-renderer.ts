@@ -20,7 +20,7 @@ import type { PageHandle, ResidencyView } from '../../assets/source-registry.ts'
 import type { AppearanceDefinition } from '../../schema/appearance.ts';
 import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
-import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, setCompositeLayers } from './composite-material.ts';
+import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, layerUvRect, setCompositeLayers } from './composite-material.ts';
 import { type BakeJob, type CacheCell, CANVAS_SIZE, CELL_OFFSET, type FrameCacheBackend } from './frame-cache.ts';
 import { type PlannerDecision, type PlannerGroupRef, RenderPlanner } from '../planner.ts';
 import { createMissingTexture, createSpriteLayerMaterial, createUnitQuadGeometry } from './sprite-material.ts';
@@ -477,12 +477,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       const u = lm.mesh.material.uniforms;
       (u.uQuad?.value as THREE.Vector4).set(layer.dest.x - rig.footPivot.x - m, layer.dest.y - rig.footPivot.y - m, layer.dest.w + 2 * m, layer.dest.h + 2 * m);
       if (texture) {
-        (u.uUvRect?.value as THREE.Vector4).set(
-          (layer.region.x - m) / page.width,
-          1 - (layer.region.y - m) / page.height,
-          (layer.region.x + layer.region.w + m) / page.width,
-          1 - (layer.region.y + layer.region.h + m) / page.height,
-        );
+        layerUvRect(layer, page, m, u.uUvRect?.value as THREE.Vector4);
         (u.uMap as THREE.IUniform).value = texture;
         (u.uOpacity as THREE.IUniform).value = 1;
       } else {

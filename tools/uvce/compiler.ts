@@ -11,6 +11,7 @@ import type { Direction8 } from '../../src/uvce/core/directions.ts';
 import type { Rect } from '../../src/uvce/core/geometry.ts';
 import { canonicalJson } from '../../src/uvce/core/hash.ts';
 import { type Issue, formatIssues, hasErrors } from '../../src/uvce/core/issues.ts';
+import { MIRROR_SOURCE, mirrorFrame, rigMirrorsDirections } from '../../src/uvce/core/mirror.ts';
 import { ROOT_SOCKET, type RigProfile } from '../../src/uvce/schema/common.ts';
 import {
   COMPILED_MANIFEST_SCHEMA,
@@ -56,6 +57,32 @@ export interface ValidatedImage {
   hash: string;
   trim: Rect;
   image: RgbaImage; // trimmed
+}
+
+/**
+ * allowMirror parts: every mirrored direction (W/SW/NW) that was not drawn is derived from its source direction
+ * (E/SE/NE) by reference — same image key, mirrored placement, `mirror: true` — so it costs no texture memory.
+ * A direction that was drawn explicitly always wins over mirroring.
+ */
+export function deriveMirroredDirections(part: CompiledPart, rig: RigProfile, path: string, issues: Issue[]): void {
+  const root = part.attach === ROOT_SOCKET;
+  if (part.layer === rig.socketDriverLayer && !rigMirrorsDirections(rig)) {
+    issues.push({ severity: 'warning', code: 'mirror.rig', path, message: `mirrored socket driver, but rig ${rig.id} W/SW/NW order and rest sockets are not mirrors of E/SE/NE (see mirrorRigDirections)` });
+  }
+  const inCanvas = (f: CompiledFrame): boolean => f.trim.x >= 0 && f.trim.x + f.trim.w <= rig.canonicalCanvas.width;
+  const check = (f: CompiledFrame, where: string): CompiledFrame => {
+    if (!inCanvas(f)) issues.push({ severity: 'error', code: 'mirror.canvas', path: `${path}/${where}`, message: 'mirrored image leaves the canvas (art too far from the foot-pivot axis)' });
+    return f;
+  };
+  for (const [target, source] of Object.entries(MIRROR_SOURCE) as [Direction8, Direction8][]) {
+    for (const [clipId, byDir] of Object.entries(part.clips ?? {})) {
+      const src = byDir[source];
+      if (src && !byDir[target]) byDir[target] = src.map((f, i) => check(mirrorFrame(f, rig.footPivot, root), `clips/${clipId}/${target}/${i}`));
+    }
+    const stat = part.static;
+    const src = stat?.[source];
+    if (stat && src && !stat[target]) stat[target] = check(mirrorFrame(src, rig.footPivot, root), `static/${target}`);
+  }
 }
 
 /** Validates one source PNG against the rig canvas and returns its trimmed, hashed content. */
@@ -271,6 +298,7 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
         }
         compiled.static = stat;
       }
+      if (part.allowMirror) deriveMirroredDirections(compiled, rig, base, issues);
       parts.push(compiled);
     }
     builds.push({ item, parts, keys, frames, group: item.atlasGroup ?? item.id, mipLevels: item.mipLevels ?? (item.filter === 'linear' ? DEFAULT_LINEAR_MIP_LEVELS : 0) });

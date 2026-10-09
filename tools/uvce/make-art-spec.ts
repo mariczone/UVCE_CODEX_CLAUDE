@@ -4,15 +4,20 @@
  *   pnpm assets && node tools/uvce/make-art-spec.ts
  * Output: art-spec/templates/*.png (guides + overlays per direction), art-spec/examples/raw/** (exact-format layer
  * PNGs) and art-spec/examples/sheets/*.png (explanatory sheets). The example art is SYNTHETIC placeholder art.
+ * Mirror policy: only N NE E SE S are drawn; sheets come from a fully mirrored build (W/SW/NW = mirrors).
  */
-import { copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { composePose } from '../../src/uvce/compositor/reference-compositor.ts';
 import { type RgbaImage, blitOver, createImage, fillImage } from '../../src/uvce/compositor/rgba.ts';
 import { resolveAppearance } from '../../src/uvce/core/appearance-resolver.ts';
 import { DIRECTIONS, type Direction8 } from '../../src/uvce/core/directions.ts';
 import { resolvePose } from '../../src/uvce/core/pose.ts';
-import { DEFAULT_COMPILED_DIR } from './compiler.ts';
+import { mirrorRigDirections } from '../../src/uvce/core/mirror.ts';
+import { buildAssets } from './compiler.ts';
+import { DRAWN_DIRECTIONS, fullyMirroredManifest } from './mirror-source.ts';
+import type { SourceManifest } from './source-schema.ts';
 import { loadCompiledAssets } from './compiled-loader.ts';
 import { APPEARANCE_SCHEMA_V2, type AppearanceDefinition } from '../../src/uvce/schema/appearance.ts';
 import { CANVAS, FOOT_PIVOT, SOCKETS } from './fixture-spec.ts';
@@ -102,9 +107,13 @@ async function save(path: string, img: RgbaImage): Promise<void> {
   await writeFile(path, encodePng(img));
 }
 
-// 1) Templates: one opaque guide and one transparent overlay per direction, plus a 2x sheet of all guides.
-const sheet = createImage(CANVAS * DIRECTIONS.length, CANVAS);
-for (const [i, d] of DIRECTIONS.entries()) {
+// 1) Templates: one opaque guide and one transparent overlay per DRAWN direction, plus a 2x sheet of those guides.
+for (const d of DIRECTIONS) {
+  await rm(join(OUT, 'templates', `guide-${d}.png`), { force: true });
+  await rm(join(OUT, 'templates', `overlay-${d}.png`), { force: true });
+}
+const sheet = createImage(CANVAS * DRAWN_DIRECTIONS.length, CANVAS);
+for (const [i, d] of DRAWN_DIRECTIONS.entries()) {
   const g = guide(d, true);
   await save(join(OUT, 'templates', `guide-${d}.png`), g);
   await save(join(OUT, 'templates', `overlay-${d}.png`), guide(d, false));
@@ -127,17 +136,25 @@ const raw: string[] = [
   'armor_01/armor/static/S.png',
   'armor_01/armor/static/SE.png',
   'weapon_01/weapon/static/SE.png',
-  'weapon_01/weapon/static/W.png',
-  ...DIRECTIONS.map((d) => `hat_01/hat/static/${d}.png`),
+  'weapon_01/weapon/static/E.png',
+  ...DRAWN_DIRECTIONS.map((d) => `hat_01/hat/static/${d}.png`),
 ];
+await rm(join(OUT, 'examples', 'raw'), { recursive: true, force: true });
 for (const f of raw) {
   const dst = join(OUT, 'examples', 'raw', f);
   await mkdir(dirname(dst), { recursive: true });
   await copyFile(join(DEFAULT_SOURCE_DIR, f), dst);
 }
 
-// 3) Sheets from the compiled fixture set via the CPU reference compositor (the same oracle the GPU is tested against).
-const assets = await loadCompiledAssets(DEFAULT_COMPILED_DIR);
+// 3) Sheets from a fully mirrored build of the fixture set (5 drawn directions, W/SW/NW derived by the compiler),
+//    rendered by the CPU reference compositor (the same oracle the GPU is tested against).
+const work = await mkdtemp(join(tmpdir(), 'uvce-art-spec-'));
+await cp(DEFAULT_SOURCE_DIR, join(work, 'src'), { recursive: true });
+const fixtureManifest = JSON.parse(await readFile(join(work, 'src', 'source-manifest.json'), 'utf8')) as SourceManifest;
+await writeFile(join(work, 'src', 'source-manifest.json'), JSON.stringify(fullyMirroredManifest(fixtureManifest)));
+await buildAssets({ sourceDir: join(work, 'src'), outDir: join(work, 'out') });
+const assets = await loadCompiledAssets(join(work, 'out'));
+await rm(work, { recursive: true, force: true });
 const resolved = resolveAppearance(assets.index, DEFAULT_APPEARANCE);
 if (!resolved.ok) throw new Error(JSON.stringify(resolved.issues));
 const look = resolved.value;
@@ -160,14 +177,15 @@ function strip(tiles: RgbaImage[]): RgbaImage {
   return out;
 }
 
-// 3a) The full character in all 8 directions (idle frame 0), N NE E SE S SW W NW.
+// 3a) The full character in all 8 directions (idle frame 0), N NE E SE S SW W NW; SW W NW are mirrors of SE E NE.
 await save(
   join(OUT, 'examples', 'sheets', 'directions-idle.png'),
   strip(DIRECTIONS.map((d) => tile(composePose(resolvePose(assets.index, look, { clipId: 'idle', direction: d, frameIndex: 0 }), assets.page)))),
 );
 
 // 3b) Layer breakdown: each layer alone in painter order (number = order), then the composite.
-for (const d of ['SE', 'NW'] as const) {
+await rm(join(OUT, 'examples', 'sheets', 'layer-breakdown-NW.png'), { force: true });
+for (const d of ['SE', 'NE'] as const) {
   const pose = resolvePose(assets.index, look, { clipId: 'idle', direction: d, frameIndex: 0 });
   const layers = [...pose.layers].sort((a, b) => a.order - b.order);
   const tiles = layers.map((l, i) => tile(composePose({ ...pose, layers: [l] }, assets.page), [], String(i + 1)));
@@ -206,4 +224,13 @@ await save(
   );
 }
 
-console.log(`[art-spec] wrote templates (${DIRECTIONS.length * 2 + 1}), raw examples (${raw.length}) and 5 sheets to ${OUT}/`);
+// 4) The example source manifest follows the mirror policy: allowMirror everywhere, mirrored rig directions.
+{
+  const file = join(OUT, 'templates', 'source-manifest.example.json');
+  const example = JSON.parse(await readFile(file, 'utf8')) as SourceManifest;
+  example.rigs = example.rigs.map((rig) => mirrorRigDirections(rig));
+  for (const item of example.items) for (const part of item.parts) part.allowMirror = true;
+  await writeFile(file, `${JSON.stringify(example, null, 2)}\n`);
+}
+
+console.log(`[art-spec] wrote templates (${DRAWN_DIRECTIONS.length * 2 + 1}), raw examples (${raw.length}), 5 sheets and the example manifest to ${OUT}/`);

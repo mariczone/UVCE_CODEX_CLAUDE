@@ -7,7 +7,7 @@ import type { Vec2 } from '../../src/uvce/core/geometry.ts';
 import type { ClipDefinition, RigProfile } from '../../src/uvce/schema/common.ts';
 
 export const GENERATOR_NAME = 'tools/uvce/generate-fixtures.ts';
-export const GENERATOR_VERSION = '1.0.0';
+export const GENERATOR_VERSION = '1.1.0';
 export const DEFAULT_SEED = 1337;
 export const ART_STATUS = 'synthetic-placeholder-not-for-production';
 
@@ -73,6 +73,8 @@ export interface ItemSpec {
   atlasGroup?: string;
   /** Which layers it provides and to which socket each attaches. */
   parts: { layer: FixtureLayer; attach: FixtureSocket | 'root'; animated: boolean }[];
+  /** Drawn in 5 directions only (N NE E SE S); the compiler mirrors W/SW/NW from E/SE/NE (allowMirror). */
+  mirror?: boolean;
 }
 
 export const ITEMS: ItemSpec[] = [
@@ -91,6 +93,7 @@ export const ITEMS: ItemSpec[] = [
     id: `hair_${n}`,
     slot: 'hair',
     displayName: n === '01' ? 'Hair 1 (bob)' : 'Hair 2 (long)',
+    mirror: n === '02',
     parts: [
       { layer: 'hair_back' as const, attach: 'neck' as const, animated: false },
       { layer: 'hair_front' as const, attach: 'neck' as const, animated: false },
@@ -98,18 +101,21 @@ export const ITEMS: ItemSpec[] = [
   })),
   ...(['01', '02', '03'] as const).map((n, i) => ({
     id: `hat_${n}`,
+    mirror: n === '03',
     slot: 'hat',
     displayName: ['Hat 1 (straw)', 'Hat 2 (wizard)', 'Hat 3 (cap + translucent visor)'][i] as string,
     parts: [{ layer: 'hat' as const, attach: 'head_top' as const, animated: false }],
   })),
   ...(['01', '02', '03'] as const).map((n, i) => ({
     id: `armor_${n}`,
+    mirror: n === '03',
     slot: 'armor',
     displayName: ['Armor 1 (tabard)', 'Armor 2 (leather)', 'Armor 3 (robe + translucent sash)'][i] as string,
     parts: [{ layer: 'armor' as const, attach: 'chest' as const, animated: false }],
   })),
   ...(['01', '02', '03'] as const).map((n, i) => ({
     id: `weapon_${n}`,
+    mirror: n === '02',
     slot: 'weapon',
     displayName: ['Weapon 1 (sword)', 'Weapon 2 (staff)', 'Weapon 3 (axe)'][i] as string,
     parts: [{ layer: 'weapon' as const, attach: 'right_hand' as const, animated: false }],

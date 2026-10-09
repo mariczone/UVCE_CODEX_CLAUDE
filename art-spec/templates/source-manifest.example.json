@@ -222,79 +222,79 @@
         },
         "SW": {
           "head_top": {
-            "x": 126,
+            "x": 125,
             "y": 47
           },
           "neck": {
-            "x": 127,
+            "x": 126,
             "y": 104
           },
           "chest": {
-            "x": 129,
+            "x": 128,
             "y": 132
           },
           "right_hand": {
-            "x": 107,
-            "y": 148
-          },
-          "left_hand": {
-            "x": 153,
+            "x": 152,
             "y": 150
           },
+          "left_hand": {
+            "x": 106,
+            "y": 148
+          },
           "back": {
-            "x": 136,
+            "x": 135,
             "y": 118
           }
         },
         "W": {
           "head_top": {
-            "x": 125,
+            "x": 124,
             "y": 47
           },
           "neck": {
-            "x": 127,
+            "x": 126,
             "y": 104
           },
           "chest": {
-            "x": 128,
+            "x": 127,
             "y": 132
           },
           "right_hand": {
-            "x": 126,
-            "y": 149
-          },
-          "left_hand": {
-            "x": 123,
+            "x": 122,
             "y": 150
           },
+          "left_hand": {
+            "x": 125,
+            "y": 149
+          },
           "back": {
-            "x": 139,
+            "x": 138,
             "y": 118
           }
         },
         "NW": {
           "head_top": {
-            "x": 127,
+            "x": 126,
             "y": 47
           },
           "neck": {
-            "x": 127,
+            "x": 126,
             "y": 104
           },
           "chest": {
-            "x": 128,
+            "x": 127,
             "y": 132
           },
           "right_hand": {
-            "x": 151,
-            "y": 148
-          },
-          "left_hand": {
-            "x": 105,
+            "x": 104,
             "y": 150
           },
+          "left_hand": {
+            "x": 150,
+            "y": 148
+          },
           "back": {
-            "x": 136,
+            "x": 135,
             "y": 118
           }
         }
@@ -352,33 +352,33 @@
         ],
         "SW": [
           "hair_back",
-          "weapon",
           "body",
           "armor",
           "arm_front",
           "head",
           "hair_front",
-          "hat"
+          "hat",
+          "weapon"
         ],
         "W": [
           "hair_back",
-          "weapon",
           "body",
           "armor",
           "arm_front",
           "head",
           "hair_front",
-          "hat"
+          "hat",
+          "weapon"
         ],
         "NW": [
           "hair_front",
-          "weapon",
           "body",
           "armor",
-          "arm_front",
           "head",
           "hair_back",
-          "hat"
+          "hat",
+          "arm_front",
+          "weapon"
         ]
       }
     }
@@ -439,7 +439,7 @@
           "layer": "body",
           "attach": "root",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "clips": {
             "idle": {
               "SE": [
@@ -1387,7 +1387,7 @@
           "layer": "arm_front",
           "attach": "root",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "clips": {
             "idle": {
               "SE": [
@@ -1462,7 +1462,7 @@
           "layer": "head",
           "attach": "neck",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "static": {
             "SE": {
               "file": "head_base/head/static/SE.png",
@@ -1494,7 +1494,7 @@
           "layer": "hair_back",
           "attach": "neck",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "static": {
             "SE": {
               "file": "hair_01/hair_back/static/SE.png",
@@ -1516,7 +1516,7 @@
           "layer": "hair_front",
           "attach": "neck",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "static": {
             "SE": {
               "file": "hair_01/hair_front/static/SE.png",
@@ -1548,7 +1548,7 @@
           "layer": "hat",
           "attach": "head_top",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "static": {
             "SE": {
               "file": "hat_01/hat/static/SE.png",
@@ -1580,7 +1580,7 @@
           "layer": "armor",
           "attach": "chest",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "static": {
             "SE": {
               "file": "armor_01/armor/static/SE.png",
@@ -1612,7 +1612,7 @@
           "layer": "weapon",
           "attach": "right_hand",
           "representation": "FRAME",
-          "allowMirror": false,
+          "allowMirror": true,
           "static": {
             "SE": {
               "file": "weapon_01/weapon/static/SE.png",

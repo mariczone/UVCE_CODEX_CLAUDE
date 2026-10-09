@@ -4,7 +4,10 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { companionAppearance } from '../../src/uvce/bench/crowd.ts';
 import { type RgbaImage, diffImages } from '../../src/uvce/compositor/rgba.ts';
+import { resolveAppearance } from '../../src/uvce/core/appearance-resolver.ts';
+import { resolvePose } from '../../src/uvce/core/pose.ts';
 import { loadCompiledAssets } from '../../tools/uvce/compiled-loader.ts';
 import { decodePng, encodePng } from '../../tools/uvce/png.ts';
 import { buildParityExpected, parityPaintOrder } from '../support/parity-expected.ts';
@@ -57,6 +60,16 @@ test.describe('GPU vs CPU reference parity', () => {
       expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
     });
   }
+
+  test('the W and NW cases cover mirrored layers (companion: hair_02, hat_03, armor_03, weapon_02)', async () => {
+    const assets = await loadCompiledAssets('public/uvce-compiled');
+    const r = resolveAppearance(assets.index, companionAppearance());
+    if (!r.ok) throw new Error('resolve failed');
+    for (const direction of ['W', 'NW'] as const) {
+      const pose = resolvePose(assets.index, r.value, { clipId: 'walk', direction, frameIndex: 0 });
+      expect(pose.layers.filter((l) => l.mirror).length, direction).toBeGreaterThanOrEqual(3);
+    }
+  });
 
   test('negative controls: a missing layer or a broken depth test would be detected', async ({ page }) => {
     const assets = await loadCompiledAssets('public/uvce-compiled');

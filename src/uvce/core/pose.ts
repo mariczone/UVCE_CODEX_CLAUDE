@@ -24,6 +24,8 @@ export interface ResolvedLayer {
   dest: Rect;
   /** Painter index inside the character (0 = farthest back). */
   order: number;
+  /** Sample the image horizontally flipped (a mirrored direction, see core/mirror.ts); dest is already mirrored. */
+  mirror: boolean;
 }
 
 export interface ResolvedPose {
@@ -91,7 +93,7 @@ export function resolvePose(index: ManifestIndex, appearance: ResolvedAppearance
       h: frame.trim.h,
     };
     bounds = unionRect(bounds, dest);
-    layers.push({ layer, slot: source.slot.slot, itemId: source.slot.item.id, image: frame.image, region, dest, order: layers.length });
+    layers.push({ layer, slot: source.slot.slot, itemId: source.slot.item.id, image: frame.image, region, dest, order: layers.length, mirror: frame.mirror === true });
   }
   return { clipId, direction, frameIndex, sockets, layers, bounds, issues };
 }

@@ -56,7 +56,7 @@ describe('deterministic seeded fixture generator', () => {
         }
       }
     }
-    expect(checked).toBe(330);
+    expect(checked).toBe(316); // 330 drawn before 4 companion items became mirrored (W/SW/NW derived)
   });
 
   it('provides 3 hats, 3 armors, 3 weapons, 2 hairs over 8 directions and idle+walk body clips', async () => {
@@ -82,7 +82,7 @@ describe('asset compiler', () => {
   it('dedupes identical frames, reports stats and keeps every region inside its page with a gutter', async () => {
     const { index } = await compiledAssets();
     const m = index.manifest;
-    expect(m.stats.sourceFrames).toBe(330);
+    expect(m.stats.sourceFrames).toBe(316);
     expect(m.stats.uniqueImages).toBeLessThan(m.stats.sourceFrames);
     expect(m.stats.dedupedFrames).toBe(m.stats.sourceFrames - m.stats.uniqueImages);
     const byPage = new Map<string, { x: number; y: number; w: number; h: number }[]>();

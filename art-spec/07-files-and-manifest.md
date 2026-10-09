@@ -10,15 +10,15 @@ art-input/knight/
 ├─ source-manifest.json              ← คำอธิบายทุกไฟล์ (ผมเขียนให้ได้ ดูด้านล่าง)
 ├─ body_base/
 │  ├─ body/
-│  │  ├─ idle/S/000.png … 007.png    ← 8 ทิศ × 8 เฟรม
+│  │  ├─ idle/S/000.png … 007.png    ← 5 ทิศ (N NE E SE S) × 8 เฟรม
 │  │  ├─ idle/SE/000.png …
 │  │  └─ walk/<DIR>/000.png … 007.png
 │  └─ arm_front/
-│     ├─ idle/SE/000.png …           ← ไม่มี S และ N
+│     ├─ idle/SE/000.png …           ← NE E SE เท่านั้น (ไม่มี S และ N)
 │     └─ walk/<DIR>/…
-├─ head_base/head/static/S.png, SE.png, E.png, NE.png, N.png, NW.png, W.png, SW.png
-├─ hair_01/hair_back/static/<DIR>.png        ← 8 ทิศ
-├─ hair_01/hair_front/static/<DIR>.png       ← S SE E SW W
+├─ head_base/head/static/S.png, SE.png, E.png, NE.png, N.png   ← ไม่ต้องส่ง SW W NW
+├─ hair_01/hair_back/static/<DIR>.png        ← 5 ทิศ
+├─ hair_01/hair_front/static/<DIR>.png       ← S SE E
 ├─ armor_01/armor/static/<DIR>.png
 ├─ hat_01/hat/static/<DIR>.png
 └─ weapon_01/weapon/static/<DIR>.png
@@ -28,7 +28,7 @@ art-input/knight/
 
 - **id ของ item** (ชื่อโฟลเดอร์ระดับแรก): ตัวพิมพ์เล็ก `a-z 0-9 _ -` ขึ้นต้นด้วยตัวอักษรหรือตัวเลข เช่น `armor_04`, `hat_wizard`
 - **ชื่อ layer** ต้องตรงกับ 03 ทุกตัวอักษร: `body`, `arm_front`, `head`, `hair_back`, `hair_front`, `armor`, `hat`, `weapon`
-- **ทิศ** ใช้ตัวพิมพ์ใหญ่: `N NE E SE S SW W NW`
+- **ทิศ** ใช้ตัวพิมพ์ใหญ่: `N NE E SE S` (ส่ง `SW W NW` ได้เฉพาะชิ้นที่ต้องการแทนภาพกลับ ดู 02)
 - **เลขเฟรม** 3 หลักเริ่มจาก 0: `000.png` … `007.png`
 - path ห้ามมีช่องว่าง ภาษาไทย หรืออักขระพิเศษ (compiler บังคับรูปแบบ `[A-Za-z0-9_-]` ต่อส่วน)
 - **ถ้าอยากดูผลในแอปทันทีโดยไม่ต้องแก้โค้ด:** ใช้ id เดียวกับตัวต้นแบบ (`body_base`, `head_base`, `hair_01`, `armor_01`, `hat_01`, `weapon_01`) เพราะ hero ในแอปผูกกับ id พวกนี้ ส่วน crowd ใช้ item ทุกชิ้นตาม slot อยู่แล้ว
@@ -59,7 +59,7 @@ manifest บอก compiler ว่าแต่ละไฟล์คือชิ�
   "id": "hat_01", "version": "1", "slot": "hat", "rigProfileId": "humanoid_2d_v1",
   "displayName": "Hat 1 (straw)", "filter": "linear",
   "parts": [{
-    "layer": "hat", "attach": "head_top", "representation": "FRAME", "allowMirror": false,
+    "layer": "hat", "attach": "head_top", "representation": "FRAME", "allowMirror": true,
     "static": {
       "S":  { "file": "hat_01/hat/static/S.png",  "anchor": { "x": 128, "y": 47 } },
       "SE": { "file": "hat_01/hat/static/SE.png", "anchor": { "x": 130, "y": 47 } }
@@ -78,7 +78,7 @@ manifest บอก compiler ว่าแต่ละไฟล์คือชิ�
   "id": "body_base", "version": "1", "slot": "body", "rigProfileId": "humanoid_2d_v1",
   "displayName": "Base body", "filter": "linear", "atlasGroup": "core",
   "parts": [{
-    "layer": "body", "attach": "root", "representation": "FRAME", "allowMirror": false,
+    "layer": "body", "attach": "root", "representation": "FRAME", "allowMirror": true,
     "clips": {
       "walk": {
         "SE": [
@@ -96,6 +96,8 @@ manifest บอก compiler ว่าแต่ละไฟล์คือชิ�
 - body เกาะ `root` จึง**ไม่ต้องมี anchor** (ใช้ foot pivot เอง)
 - **ทุกเฟรม** ของ body ต้องมี `sockets` ครบ 6 จุด ส่วน `arm_front` อยู่ใน item เดียวกันแต่**ไม่มี sockets**
 - ค่าทุกตัวเป็น**จำนวนเต็ม** (pixel)
+- `"allowMirror": true` ในทุก part: compiler สร้าง SW / W / NW จาก SE / E / NE ให้ (ภาพเดิม กลับซ้ายขวา socket และ anchor คำนวณให้) ถ้า part มีไฟล์ของทิศนั้นเองก็ใช้ไฟล์นั้นแทน
+- rig ต้องมีลำดับชั้นและ socket ท่าพักของ W / SW / NW เป็นภาพกลับของ E / SE / NE (`mirrorRigDirections` ในโค้ด) ไม่งั้น compiler เตือน `mirror.rig` ตัวอย่างใน `templates/source-manifest.example.json` ตั้งไว้ให้แล้ว
 
 ## ส่งตำแหน่ง socket แบบง่าย (ถ้าไม่เขียน manifest เอง)
 
@@ -108,6 +110,6 @@ idle,S,1,128,48,128,105,128,133,97,151,159,151,128,119
 walk,SE,0,130,46,129,103,127,131,103,149,149,147,120,117
 ```
 
-- รวม 8 ทิศ × 16 เฟรม = 128 บรรทัด แถว `idle,<DIR>,0` ทั้ง 8 แถวจะกลายเป็นตำแหน่งท่าพักของ rig
+- รวม 5 ทิศ (N NE E SE S) × 16 เฟรม = 80 บรรทัด แถว `idle,<DIR>,0` ทั้ง 5 แถวจะกลายเป็นตำแหน่งท่าพักของ rig (SW W NW คำนวณจากการกลับภาพ: x → 255 − x)
 - อ่านพิกัดได้จากโปรแกรมวาด (ตำแหน่งเมาส์บนผ้าใบ 256² มุมซ้ายบน = 0,0)
 - ถ้าสะดวกกว่า วาดจุดสี socket (สีตามตารางใน 03) เป็น layer แยกแล้วส่งมา ผมเขียนตัวอ่านจุดให้ได้ แจ้งก่อน
