@@ -51,8 +51,9 @@ URL parameters: `count=20`, `seed=42`, `dir=SE`, `clip=walk`, `t=350` (ms), `pau
 `scene=studio` (pixel-exact orthographic camera), `variant=crossing|arch|glass` (with `scene=parity`),
 `budgetMiB=1` (source page budget, default 256 — small values force evictions), `mips=0` (no mip chains, for A/B),
 `filter=nearest|linear`, `bench=1` (panel off, for measurements), `mode=SHADER` (Milestone 3: one composited quad
-per character) / `mode=FULL_CACHE` (baked frames from a render-target cache, `cacheMiB=64`); LAYERED stays the
-default and PARTIAL_CACHE falls back to it with the reason shown. Workload knobs: `looks=8` (only 8 distinct NPC
+per character) / `mode=FULL_CACHE` (baked frames from a render-target cache, `cacheMiB=64`) / `mode=LAYERED` (one quad per
+layer). **SHADER is the default** since the RTX 3070 benchmarks; LAYERED is the automatic fallback, and PARTIAL_CACHE
+falls back to it with the reason shown. Workload knobs: `looks=8` (only 8 distinct NPC
 outfits), `sync=1` (NPCs animate in step).
 
 ---

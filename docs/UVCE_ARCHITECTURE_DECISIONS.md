@@ -247,7 +247,10 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   checks (reversed composite order, no FAILED fallback, composite audit disabled) are each caught.
 - **Result (RTX 3070):** draw calls 2,108 → 606 and CPU per frame 10.5 → 4.3 ms at 300 characters, with GPU raster
   +0.7 ms (`docs/benchmark-results/gpu/2026-10-09-rtx3070-m3/`).
-- **Status:** behind `mode=SHADER`, LAYERED stays the default until a weaker GPU (iGPU) confirms the trade-off. The
+- **Status:** **default since 2026-10-09** (owner decision after the RTX 3070 matrix: SHADER won or tied every workload
+  at 1080p and 4K). LAYERED remains the automatic fallback (per pose, or for the whole device when there are too few
+  texture units) and stays available as `mode=LAYERED`. An iGPU check is still open. Previously SHADER sat behind
+  `mode=SHADER`, and LAYERED stayed the default until a weaker GPU (iGPU) confirmed the trade-off. The
   renderer is ready for a planner to choose per character. PARTIAL_CACHE, FULL_CACHE and the adaptive planner are
   not built yet.
 

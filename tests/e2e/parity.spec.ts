@@ -48,7 +48,7 @@ test.describe('GPU vs CPU reference parity', () => {
   for (const c of CASES) {
     test(`${c.direction} ${c.clipId} t=${c.timeMs}ms matches the reference compositor`, async ({ page }) => {
       const assets = await loadCompiledAssets('public/uvce-compiled');
-      const actual = await capture(page, `scene=parity&test=1&dir=${c.direction}&clip=${c.clipId}&t=${c.timeMs}`);
+      const actual = await capture(page, `scene=parity&test=1&mode=LAYERED&dir=${c.direction}&clip=${c.clipId}&t=${c.timeMs}`);
       const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: c.direction, clipId: c.clipId, timeMs: c.timeMs, pixelsPerUnit: 128 });
       const diff = diffImages(actual, expected, TOLERANCE);
       logParity(`${c.direction} ${c.clipId} t=${c.timeMs}`, actual, expected, diff);
@@ -63,12 +63,12 @@ test.describe('GPU vs CPU reference parity', () => {
     const opts = { width: 1280, height: 720, direction: 'SE' as const, clipId: 'idle', timeMs: 0, pixelsPerUnit: 128 };
     const expected = buildParityExpected(assets, opts);
     // 1) Hiding the hat layer must produce many mismatches against the full expectation.
-    const noHat = await capture(page, 'scene=parity&test=1&dir=SE&hide=hat');
+    const noHat = await capture(page, 'scene=parity&test=1&mode=LAYERED&dir=SE&hide=hat');
     const hatMissing = diffImages(noHat, expected, TOLERANCE).mismatched;
     expect(hatMissing).toBeGreaterThan(500);
     // 2) The box really occludes the back character: an expectation that ignores depth (box drawn first)
     //    differs from the correct one, and the GPU output matches only the correct one.
-    const actual = await capture(page, 'scene=parity&test=1&dir=SE');
+    const actual = await capture(page, 'scene=parity&test=1&mode=LAYERED&dir=SE');
     const noDepth = buildParityExpected(assets, { ...opts, drawFirst: ['box'] });
     const occluded = diffImages(noDepth, expected, TOLERANCE).mismatched;
     console.log(`[parity] negative controls: hat hidden ${hatMissing} px differ, depth ignored ${occluded} px differ`);
@@ -80,7 +80,7 @@ test.describe('GPU vs CPU reference parity', () => {
   for (const c of VARIANT_CASES_SHARED) {
     test(`variant ${c.variant} t=${c.timeMs}ms: painter order and pixels match the reference`, async ({ page }) => {
       const assets = await loadCompiledAssets('public/uvce-compiled');
-      const actual = await capture(page, `scene=parity&variant=${c.variant}&test=1&dir=SE&t=${c.timeMs}`);
+      const actual = await capture(page, `scene=parity&variant=${c.variant}&test=1&mode=LAYERED&dir=SE&t=${c.timeMs}`);
       expect(await api(page, (u) => u.paintOrder())).toEqual(c.order);
       const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, variant: c.variant, direction: 'SE', clipId: 'idle', timeMs: c.timeMs, pixelsPerUnit: 128 });
       const diff = diffImages(actual, expected, TOLERANCE);
@@ -96,12 +96,12 @@ test.describe('GPU vs CPU reference parity', () => {
     // Crossing: the order really flips between the two sampled times.
     expect(parityPaintOrder('crossing', 400).map((e) => e.id)).toEqual(['wall', 'hero', 'npc-static']);
     expect(parityPaintOrder('crossing', 2000).map((e) => e.id)).toEqual(['wall', 'npc-static', 'hero']);
-    const late = await capture(page, 'scene=parity&variant=crossing&test=1&t=2000');
+    const late = await capture(page, 'scene=parity&variant=crossing&test=1&mode=LAYERED&t=2000');
     const stale = buildParityExpected(assets, { ...base, variant: 'crossing', timeMs: 2000, drawFirst: ['hero'] });
     const staleOrder = diffImages(late, stale, TOLERANCE).mismatched;
     expect(staleOrder).toBeGreaterThan(300);
     // Glass: drawing it before all sprites (what three.js does for an unsorted transparent mesh) differs.
-    const glass = await capture(page, 'scene=parity&variant=glass&test=1&dir=SE');
+    const glass = await capture(page, 'scene=parity&variant=glass&test=1&mode=LAYERED&dir=SE');
     const unsorted = buildParityExpected(assets, { ...base, variant: 'glass', timeMs: 0, drawFirst: ['glass'] });
     const unsortedGlass = diffImages(glass, unsorted, TOLERANCE).mismatched;
     console.log(`[parity] variant negative controls: stale crossing order ${staleOrder} px differ, unsorted glass ${unsortedGlass} px differ`);
@@ -154,7 +154,7 @@ test.describe(`${MODE} mode parity`, () => {
     const hatMissing = diffImages(noHat, expected, TOLERANCE).mismatched;
     expect(hatMissing).toBeGreaterThan(500);
     const shaderDraws = (await api(page, (u) => u.snapshot())).drawCalls;
-    await capture(page, 'scene=parity&test=1&dir=SE&hide=hat');
+    await capture(page, 'scene=parity&test=1&mode=LAYERED&dir=SE&hide=hat');
     const layeredDraws = (await api(page, (u) => u.snapshot())).drawCalls;
     console.log(`[parity] ${MODE} negative control: hat hidden ${hatMissing} px differ; draw calls LAYERED ${layeredDraws} -> ${MODE} ${shaderDraws}`);
     // Parity scene: 2 characters (+ wall, box): LAYERED draws every layer, SHADER one quad per character.

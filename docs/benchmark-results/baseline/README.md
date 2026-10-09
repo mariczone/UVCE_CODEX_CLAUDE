@@ -44,6 +44,11 @@ Output: `docs/benchmark-results/baseline/<YYYY-MM-DD>/summary.json`, `summary.cs
 - **Resident source bytes** — owner-calculated estimates, not measured VRAM: `sourceRGBA8MiB` = level 0 of the
   resident pages (comparable with M0), `residentGpuEstimateMiB` = including mip chains (M2).
 
+## Default render mode
+
+Since 2026-10-09 the app's default render mode is **SHADER**, so `pnpm bench:baseline` without `--query` measures
+SHADER. Runs before that date measured LAYERED; to compare with them, pass `--query '&mode=LAYERED'`.
+
 ## Rules
 
 - No FPS or GPU-performance claim from a software rasterizer.

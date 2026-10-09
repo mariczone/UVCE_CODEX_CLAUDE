@@ -18,7 +18,9 @@ test.describe('app boot and scene', () => {
     const hero = await api(page, (u) => u.heroDebug());
     expect(hero?.direction).toBe('SE');
     expect(hero?.layers.map((l) => l.layer)).toEqual(['hair_back', 'body', 'armor', 'arm_front', 'head', 'hair_front', 'hat', 'weapon']);
-    await expect(page.getByTestId('env')).toContainText('Render mode: LAYERED');
+    // Default since Milestone 3: SHADER (one composited quad per character), LAYERED as fallback.
+    await expect(page.getByTestId('env')).toContainText('Render mode: SHADER');
+    expect(snap.character.compositedCharacters).toBe(1);
     expect(errors).toEqual([]);
   });
 
@@ -32,7 +34,10 @@ test.describe('app boot and scene', () => {
       results[n] = { visible: s.snap.character.visibleCharacters, layers: s.snap.character.visibleLayers, draws: s.snap.drawCalls, order: s.order };
       expect(s.snap.count).toBe(n);
       expect(s.snap.character.visibleCharacters).toBe(n);
-      expect(s.snap.drawCalls).toBeGreaterThanOrEqual(s.snap.character.visibleLayers);
+      // Default SHADER mode: one composite + one shadow per character (plus world), fewer draws than layers.
+      expect(s.snap.character.compositedCharacters).toBe(n);
+      expect(s.snap.drawCalls).toBeGreaterThanOrEqual(2 * n);
+      if (n > 1) expect(s.snap.drawCalls).toBeLessThan(s.snap.character.visibleLayers);
     }
     // Same seed after reload => identical painter order (placement + appearance are deterministic).
     await openApp(page, 'test=1&seed=1234&count=100');
