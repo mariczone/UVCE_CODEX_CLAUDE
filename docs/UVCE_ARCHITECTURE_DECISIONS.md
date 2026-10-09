@@ -1,7 +1,7 @@
 # UVCE Architecture Decisions (ADRs) — Milestones 0–2
 
 Short decision records for the POC. Each lists the decision, why, and what would make us revisit it.
-Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0–M2** (ADR-13/14: M3, in progress); paragraphs marked
+Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0–M2** (ADR-13/14/15: M3); paragraphs marked
 **(M1)** / **(M2)** record what those milestones changed.
 
 ## ADR-01 Standalone single-package POC next to the starter pack
@@ -290,3 +290,29 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   more faithful of the two. Crops look the same, with FULL_CACHE marginally softer.
 - **Status:** behind `mode=FULL_CACHE`. Whether it wins is workload-dependent; `looks=N` and `sync=1` produce
   cache-friendly crowds for the benchmark. The GPU benchmark matrix is pending (owner's machine).
+
+## ADR-15 Adaptive render planner (mode=AUTO) (M3)
+
+- **Decision:** choose the representation per appearance group from measurements. SHADER is the default for every
+  group; a group moves to FULL_CACHE only when its frames are measured to repeat. This follows blueprint §4.3:
+  hysteresis, cost-based, no mode thrashing.
+- **Signals (`src/uvce/render/planner.ts`, 60-frame windows):** while a group is on SHADER, its potential hit ratio is
+  `1 − distinct frame keys / requests`, i.e. the hits a big enough cache would get, measured without baking. Once it
+  is cached, the measured hit ratio of its lookups is used instead.
+- **Rules (thresholds from the RTX 3070 matrix):**
+  - Promote when potential ≥ 0.9 and the frames all cached groups need at the same time (peak distinct keys in one
+    frame) fit in 80 % of the cache cells; larger groups get the room first. An earlier version counted every frame of
+    the window, which over-estimated by ~7× for animated crowds (LRU recycles frames that are no longer shown), so it
+    cached only 1 of 8 looks in the formation crowd. Fixed and unit-tested.
+  - Demote when the measured hit ratio < 0.6.
+  - Each group must stay in its mode for at least 240 frames before switching again.
+  - Groups out of view for a window are forgotten.
+  - Context loss resets all groups to SHADER.
+  - The FULL_CACHE thrash breaker stays active as a global safety net.
+- **Promoted groups skip admission control:** their reuse has already been measured, so even the first character to
+  reach a new animation frame bakes it instead of falling back for one frame.
+- **Proof:** unit tests for promotion, hysteresis, capacity, forgetting, renderer integration and context loss. E2e:
+  in the parity scene both looks are promoted and the frame stays pixel-exact against the CPU reference; AUTO swap
+  storm with 0 binding violations. Mutations (hysteresis off, capacity check off) are caught.
+- **Status:** opt-in (`mode=AUTO`) until its benchmark shows it at least matches SHADER (results in
+  `docs/benchmark-results/gpu/`).

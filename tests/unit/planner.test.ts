@@ -69,6 +69,15 @@ describe('render planner', () => {
     expect(p.stats().capacityUsed).toBe(10);
   });
 
+  it('capacity counts frames needed at the same time, not every frame of the window (animation rotates frames)', () => {
+    const p = new RenderPlanner({ capacityCells: 20, capacityShare: 0.8 }); // room for 16 frames at once
+    // 30 characters in step: 8 frames at any moment (directions), a new animation step every 10 frames
+    // => 48 distinct frames per window, but only 8 needed at once (LRU recycles the previous step).
+    drive(p, 1, 60, (f) => Array.from({ length: 30 }, (_, i) => ['formation', `formation|${i % 8}|${Math.floor(f / 10)}`] as [string, string]));
+    expect(p.isCached('formation')).toBe(true);
+    expect(p.stats().capacityUsed).toBe(8);
+  });
+
   it('forgets groups that left the view and resets on demand', () => {
     const p = new RenderPlanner({ capacityCells: 100 });
     drive(p, 1, 60, () => [['A', 'A|0']]);

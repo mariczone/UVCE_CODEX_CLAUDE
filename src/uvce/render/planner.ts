@@ -6,8 +6,9 @@
  * only where its hit ratio was ~0.98 (a formation crowd); at 0.73–0.79 it lost 3–11 %. Hence:
  *  - a group's *potential* hit ratio is estimated while it is still on SHADER, without baking anything:
  *    1 - distinct frame keys / requests over a window (the hits a large enough cache would have had);
- *  - promotion needs potential >= promoteHitRatio (0.9) and room in the cache: the distinct frames of all cached groups
- *    must fit in capacityShare (80 %) of the cells; the biggest groups win the room first;
+ *  - promotion needs potential >= promoteHitRatio (0.9) and room in the cache: the frames all cached groups need AT
+ *    THE SAME TIME (peak distinct keys in one frame; LRU recycles frames that are no longer shown) must fit in
+ *    capacityShare (80 %) of the cells; the biggest groups win the room first;
  *  - demotion when the measured hit ratio falls below demoteHitRatio (0.6);
  *  - hysteresis: a group keeps its mode for at least minResidenceFrames (240 frames ≈ 4 s) before switching again,
  *    so no mode thrashing.
@@ -60,8 +61,12 @@ interface Group {
   keys: Set<string>;
   lookups: number;
   hits: number;
-  /** Distinct frames in the previous window (capacity accounting). */
+  /** Peak distinct frames requested in a single frame during the previous window (capacity accounting). */
   distinct: number;
+  /** Frames requested in the current frame, and the peak of their count over the window. */
+  frameKeys: Set<string>;
+  keysFrame: number;
+  peak: number;
 }
 
 export class RenderPlanner {
@@ -84,7 +89,7 @@ export class RenderPlanner {
   private group(key: string): Group {
     let g = this.groups.get(key);
     if (!g) {
-      g = { cached: false, since: this.frame - this.options.minResidenceFrames, lastSeen: this.frame, requests: 0, keys: new Set(), lookups: 0, hits: 0, distinct: 0 };
+      g = { cached: false, since: this.frame - this.options.minResidenceFrames, lastSeen: this.frame, requests: 0, keys: new Set(), lookups: 0, hits: 0, distinct: 0, frameKeys: new Set(), keysFrame: -1, peak: 0 };
       this.groups.set(key, g);
     }
     return g;
@@ -96,6 +101,12 @@ export class RenderPlanner {
     g.lastSeen = this.frame;
     g.requests++;
     g.keys.add(frameKey);
+    if (g.keysFrame !== this.frame) {
+      g.keysFrame = this.frame;
+      g.frameKeys.clear();
+    }
+    g.frameKeys.add(frameKey);
+    if (g.frameKeys.size > g.peak) g.peak = g.frameKeys.size;
   }
 
   /** Outcome of a cache lookup for a character of a cached group. */
@@ -121,7 +132,7 @@ export class RenderPlanner {
         this.groups.delete(key); // gone from view for a whole window: forget it, free its capacity
         continue;
       }
-      g.distinct = g.keys.size;
+      g.distinct = g.peak;
       if (g.cached && settled(g) && g.lookups >= o.minRequests && g.hits / g.lookups < o.demoteHitRatio) {
         g.cached = false;
         g.since = this.frame;
@@ -133,7 +144,7 @@ export class RenderPlanner {
     for (const g of this.groups.values()) if (g.cached) used += g.distinct;
     const limit = Math.floor(o.capacityCells * o.capacityShare);
     const candidates = [...this.groups.entries()]
-      .filter(([, g]) => !g.cached && settled(g) && g.requests >= o.minRequests && 1 - g.distinct / g.requests >= o.promoteHitRatio)
+      .filter(([, g]) => !g.cached && settled(g) && g.requests >= o.minRequests && 1 - g.keys.size / g.requests >= o.promoteHitRatio)
       .sort((a, b) => b[1].requests - a[1].requests || (a[0] < b[0] ? -1 : 1));
     for (const [key, g] of candidates) {
       if (used + g.distinct > limit) continue;
@@ -141,12 +152,13 @@ export class RenderPlanner {
       g.since = this.frame;
       used += g.distinct;
       this.promotions++;
-      decisions.push({ group: key, to: 'FULL_CACHE', reason: `potential hit ratio ${(1 - g.distinct / g.requests).toFixed(2)}, ${g.distinct} frames` });
+      decisions.push({ group: key, to: 'FULL_CACHE', reason: `potential hit ratio ${(1 - g.keys.size / g.requests).toFixed(2)}, ${g.distinct} frames at once` });
     }
     this.capacityUsed = used;
     for (const g of this.groups.values()) {
       g.requests = 0;
       g.keys.clear();
+      g.peak = 0;
       g.lookups = 0;
       g.hits = 0;
     }
