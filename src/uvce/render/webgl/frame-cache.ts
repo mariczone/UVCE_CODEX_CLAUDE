@@ -66,6 +66,11 @@ export class FrameCacheAllocator {
     this.frame = frame;
   }
 
+  /** Total cells once every page is allocated. */
+  get capacityCells(): number {
+    return this.cellsPerPage * this.maxPages;
+  }
+
   /** The cell holding `key`, marked as used this frame (protected from eviction until the next frame). */
   lookup(key: string): CacheCell | null {
     const cell = this.byKey.get(key);

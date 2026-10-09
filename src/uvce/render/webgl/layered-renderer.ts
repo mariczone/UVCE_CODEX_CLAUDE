@@ -22,6 +22,7 @@ import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
 import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, setCompositeLayers } from './composite-material.ts';
 import { type BakeJob, type CacheCell, CANVAS_SIZE, CELL_OFFSET, type FrameCacheBackend } from './frame-cache.ts';
+import { type PlannerDecision, RenderPlanner } from '../planner.ts';
 import { createMissingTexture, createSpriteLayerMaterial, createUnitQuadGeometry } from './sprite-material.ts';
 
 export interface LayeredRendererOptions {
@@ -38,7 +39,8 @@ export interface LayeredRendererOptions {
    * LAYERED (default): one quad per layer. SHADER: one composited quad per character. FULL_CACHE: one quad sampling a
    * baked frame from the frame cache. Each falls back per character/pose: FULL_CACHE -> SHADER -> LAYERED.
    */
-  mode?: 'LAYERED' | 'SHADER' | 'FULL_CACHE';
+  /** AUTO: SHADER by default, FULL_CACHE per appearance group when the planner measures enough frame reuse. */
+  mode?: 'LAYERED' | 'SHADER' | 'FULL_CACHE' | 'AUTO';
   /** Required for FULL_CACHE (without it FULL_CACHE behaves like SHADER). */
   frameCache?: FrameCacheBackend | null;
   /** FULL_CACHE: at most this many frames are baked per frame (bounds bake hitches); the rest fall back. */
@@ -169,7 +171,11 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private readonly depthBias: number;
   private readonly margin: number;
   private readonly shadowsEnabled: boolean;
-  readonly mode: 'LAYERED' | 'SHADER' | 'FULL_CACHE';
+  readonly mode: 'LAYERED' | 'SHADER' | 'FULL_CACHE' | 'AUTO';
+  /** AUTO mode: chooses SHADER or FULL_CACHE per appearance group (null in other modes). */
+  readonly planner: RenderPlanner | null;
+  /** AUTO mode: the planner's most recent switches (debug UI). */
+  lastPlannerDecisions: PlannerDecision[] = [];
   private readonly pixelsPerUnit: number;
   private readonly frameCache: FrameCacheBackend | null;
   private readonly bakeBudget: number;
@@ -209,7 +215,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     this.margin = options.filterMargin ?? 1;
     this.shadowsEnabled = options.shadows ?? true;
     this.frameCache = options.frameCache ?? null;
-    this.mode = options.mode === 'FULL_CACHE' && !this.frameCache ? 'SHADER' : (options.mode ?? 'LAYERED');
+    const needsCache = options.mode === 'FULL_CACHE' || options.mode === 'AUTO';
+    this.mode = needsCache && !this.frameCache ? 'SHADER' : (options.mode ?? 'LAYERED');
+    this.planner = this.mode === 'AUTO' && this.frameCache ? new RenderPlanner({ capacityCells: this.frameCache.allocator.capacityCells }) : null;
     this.bakeBudget = options.bakeBudget ?? 24;
     this.pixelsPerUnit = this.index.manifest.rigs[0]?.pixelsPerWorldUnit ?? 128;
     this.root.name = 'uvce-characters';
@@ -250,6 +258,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       frameCacheEvictions: 0,
       frameCachePaused: false,
       frameCachePauses: 0,
+      plannerCachedGroups: 0,
+      plannerGroups: 0,
+      plannerSwitches: 0,
     };
   }
 
@@ -472,7 +483,15 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     this.collectBindings(rec);
     rec.cached = null; // a new pose needs its own cache cell
     rec.directShown = false; // ...and whatever is shown directly is the previous pose: present again
-    if (this.mode !== 'FULL_CACHE') this.presentDirect(rec);
+    if (!this.usesCache(rec)) {
+      this.presentDirect(rec);
+      rec.directShown = true;
+    }
+  }
+
+  /** FULL_CACHE: always; AUTO: when the planner put this character's appearance group on the cache. */
+  private usesCache(rec: CharacterRecord): boolean {
+    return this.mode === 'FULL_CACHE' || (this.mode === 'AUTO' && this.planner?.isCached(rec.appearanceKey) === true);
   }
 
   private cachedQuad(rec: CharacterRecord): THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> {
@@ -512,7 +531,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       const bakeable =
         !this.contextLost &&
         this.frame >= this.cachePausedUntil &&
-        alloc.admit(key) && // bake on second sight: one-off frames never displace frames that get reused
+        // Bake on second sight: one-off frames never displace reused ones. AUTO skips it: the planner promoted this
+        // group because its frames were measured to repeat.
+        (this.mode === 'AUTO' || alloc.admit(key)) &&
         this.bakeJobs.length < this.bakeBudget &&
         rec.pendingLayers === 0 &&
         rec.failedLayers === 0 &&
@@ -573,6 +594,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   onContextLost(): void {
     this.contextLost = true;
     this.frameCache?.onContextLost();
+    this.planner?.reset(); // the cache is empty: every group starts on SHADER again
   }
 
   onContextRestored(): void {
@@ -602,6 +624,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     let culled = 0;
     const cacheCounters = { hits: 0, misses: 0 };
     this.frameCache?.allocator.beginFrame(this.frame);
+    this.planner?.beginFrame(this.frame);
     this.bakeJobs = [];
     const appearances = new Set<string>();
     for (const c of characters) {
@@ -674,7 +697,20 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         rec.auditedEpoch = this.registry.handleEpoch;
       }
       // Frame key without the registry revision: a baked frame stays valid when source pages are evicted later.
-      if (this.mode === 'FULL_CACHE') this.presentCached(rec, `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}`, cacheCounters);
+      if (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') {
+        const frameKey = `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}`;
+        this.planner?.observe(rec.appearanceKey, frameKey);
+        if (this.usesCache(rec)) {
+          const hitsBefore = cacheCounters.hits;
+          this.presentCached(rec, frameKey, cacheCounters);
+          this.planner?.recordLookup(rec.appearanceKey, cacheCounters.hits > hitsBefore);
+        } else if (rec.cachedMesh?.visible || !rec.directShown) {
+          // AUTO: the group was demoted (or never cached) -> make sure the pose is shown directly.
+          this.presentDirect(rec);
+          rec.directShown = true;
+          rec.cached = null;
+        }
+      }
       rec.group.position.set(c.position.x, c.position.y, c.position.z);
       rec.group.visible = true;
       if (rec.shadow) {
@@ -689,7 +725,11 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     const bakes = this.bakeJobs.length;
     if (bakes > 0) this.frameCache?.bake(this.bakeJobs); // before this frame renders: cells hold their frames
     this.bakeJobs = [];
-    if (this.mode === 'FULL_CACHE') this.updateThrashBreaker(bakes, cacheCounters);
+    if (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') this.updateThrashBreaker(bakes, cacheCounters);
+    if (this.planner) {
+      const decisions = this.planner.endFrame();
+      if (decisions.length > 0) this.lastPlannerDecisions = decisions;
+    }
     // Painter order: one back-to-front sort over characters and transparent objects (renderOrder = rank).
     const ranked = this.ranked;
     ranked.length = 0;
@@ -736,9 +776,12 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       cachedCharacters,
       frameCacheBakes: bakes,
       frameCacheEvictions: this.frameCache?.allocator.stats().evictions ?? 0,
-      frameCachePaused: this.mode === 'FULL_CACHE' && this.frame < this.cachePausedUntil,
+      frameCachePaused: (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') && this.frame < this.cachePausedUntil,
       frameCachePauses: this.cachePauses,
-      cacheHitRatio: this.mode === 'FULL_CACHE' && lookups > 0 ? cacheCounters.hits / lookups : null,
+      cacheHitRatio: (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') && lookups > 0 ? cacheCounters.hits / lookups : null,
+      plannerCachedGroups: this.planner?.stats().cachedGroups ?? 0,
+      plannerGroups: this.planner?.stats().groups ?? 0,
+      plannerSwitches: (this.planner?.stats().promotions ?? 0) + (this.planner?.stats().demotions ?? 0),
       compositeEstimatedBytes: (this.frameCache?.allocator.pages ?? 0) * (this.frameCache?.bytesPerPage ?? 0),
       sourceEstimatedBytes: reg.residentBytes,
       pendingDownloads: reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.RETRY_BACKOFF,

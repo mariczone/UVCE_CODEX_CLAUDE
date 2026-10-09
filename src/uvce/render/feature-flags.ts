@@ -19,6 +19,7 @@ export const FEATURES: readonly FeatureInfo[] = [
   { id: 'SHADER', implemented: true, enabled: true, milestone: 'M3', note: 'DEFAULT: one composited quad per character; won or tied every workload on the RTX 3070 (1080p and 4K).' },
   { id: 'PARTIAL_CACHE', implemented: false, enabled: false, milestone: 'M3', note: 'Group composite cache; keys exist (partGroupKey), cache does not.' },
   { id: 'FULL_CACHE', implemented: true, enabled: false, milestone: 'M3', note: 'Baked whole frames in a render-target cache (URL mode=FULL_CACHE, cacheMiB=); falls back to SHADER on a miss.' },
+  { id: 'AUTO', implemented: true, enabled: false, milestone: 'M3', note: 'Adaptive planner: SHADER per default, FULL_CACHE per appearance group when measured frame reuse >= 0.9 (URL mode=AUTO).' },
   { id: 'WEBGPU', implemented: false, enabled: false, milestone: 'M5', note: 'WebGL2 is the baseline; sprite material is isolated for a future TSL port.' },
   { id: 'VIRTUAL_ATLAS', implemented: true, enabled: true, milestone: 'M2', note: 'Compile-time atlas groups (mip-safe) + generation-checked page handles; no runtime repacking yet.' },
   { id: 'STREAMING', implemented: true, enabled: true, milestone: 'M2', note: 'Budget (URL budgetMiB=), LRU eviction, retry/backoff, abortable fetches, prefetch, context-loss recovery.' },
@@ -29,7 +30,7 @@ export const FEATURES: readonly FeatureInfo[] = [
 /** Default since the RTX 3070 matrix (docs/benchmark-results/gpu/2026-10-09-rtx3070-pending-runs). */
 export const DEFAULT_RENDER_MODE: RenderMode = 'SHADER';
 
-const RENDER_MODES: ReadonlySet<string> = new Set<RenderMode>(['LAYERED', 'SHADER', 'PARTIAL_CACHE', 'FULL_CACHE']);
+const RENDER_MODES: ReadonlySet<string> = new Set<RenderMode>(['LAYERED', 'SHADER', 'PARTIAL_CACHE', 'FULL_CACHE', 'AUTO']);
 
 export function resolveRenderMode(requested: string | null): { mode: RenderMode; fallbackReason: string | null } {
   if (!requested) return { mode: DEFAULT_RENDER_MODE, fallbackReason: null };

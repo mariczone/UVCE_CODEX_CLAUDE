@@ -12,7 +12,7 @@ import { api, openApp } from './helpers.ts';
 const PAGE_RE = /\/uvce-compiled\/pages\//;
 
 test.describe('residency (Milestone 2)', () => {
-  for (const mode of ['LAYERED', 'SHADER', 'FULL_CACHE'] as const) {
+  for (const mode of ['LAYERED', 'SHADER', 'FULL_CACHE', 'AUTO'] as const) {
   test(`swap storm (${mode}): 100 characters, forced evictions, no stale bindings, budget respected, no refetch without eviction`, async ({ page }) => {
     test.setTimeout(180_000);
     // budgetMiB=1 is far below the pinned working set: every page nobody shows is evicted at the next frame.
@@ -50,6 +50,10 @@ test.describe('residency (Milestone 2)', () => {
     for (const p of result.pages) expect(p.fetches, p.pageId).toBeLessThanOrEqual(1 + p.evictions + p.cancels);
     expect(result.snap.character.pendingLayers + result.snap.character.failedLayers).toBe(0);
     if (mode === 'SHADER') expect(result.snap.character.compositedCharacters).toBe(result.snap.character.visibleCharacters);
+    if (mode === 'AUTO') {
+      // Planner groups are cached or composited; a storm of 2400 new appearances mostly stays on SHADER.
+      expect(result.snap.character.cachedCharacters + result.snap.character.compositedCharacters).toBe(result.snap.character.visibleCharacters);
+    }
     if (mode === 'FULL_CACHE') {
       // Cached or (miss / breaker) composited, never anything else. The cache served characters during the storm;
       // at the end the thrash breaker may have paused it (2400 swaps = a working set that cannot fit).

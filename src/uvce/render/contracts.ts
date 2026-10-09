@@ -6,7 +6,7 @@ import type { AnimationState } from '../core/animation.ts';
 import type { Rect, Size, Vec3 } from '../core/geometry.ts';
 import type { AppearanceDefinition } from '../schema/appearance.ts';
 
-export type RenderMode = 'LAYERED' | 'SHADER' | 'PARTIAL_CACHE' | 'FULL_CACHE';
+export type RenderMode = 'LAYERED' | 'SHADER' | 'PARTIAL_CACHE' | 'FULL_CACHE' | 'AUTO';
 export type RendererBackend = 'webgl2' | 'webgpu';
 
 export interface CharacterInstance {
@@ -58,6 +58,10 @@ export interface CharacterRenderMetrics {
   frameCachePaused: boolean;
   /** FULL_CACHE: how often the thrash breaker paused baking since start. */
   frameCachePauses: number;
+  /** AUTO mode: appearance groups currently on FULL_CACHE / seen in the last window / mode switches since start. */
+  plannerCachedGroups: number;
+  plannerGroups: number;
+  plannerSwitches: number;
 }
 
 /**

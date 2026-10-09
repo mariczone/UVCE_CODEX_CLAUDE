@@ -164,14 +164,14 @@ export class UvceApp {
     this.camera = pixel ? createPixelCamera(1280, 720, this.pixelsPerUnit, PARITY_CAMERA_CENTER) : new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 120);
     // SHADER and FULL_CACHE (whose bake pass is the SHADER composite) need one texture unit per composite slot.
     const units = Number(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
-    if ((this.renderMode === 'SHADER' || this.renderMode === 'FULL_CACHE') && units < MAX_COMPOSITE_LAYERS) {
+    if ((this.renderMode === 'SHADER' || this.renderMode === 'FULL_CACHE' || this.renderMode === 'AUTO') && units < MAX_COMPOSITE_LAYERS) {
       this.renderModeFallback = `${this.renderMode} needs ${MAX_COMPOSITE_LAYERS} texture units, this GPU exposes ${units}`;
       this.renderMode = 'LAYERED';
     }
-    const mode = this.renderMode === 'SHADER' || this.renderMode === 'FULL_CACHE' ? this.renderMode : 'LAYERED';
+    const mode = this.renderMode === 'SHADER' || this.renderMode === 'FULL_CACHE' || this.renderMode === 'AUTO' ? this.renderMode : 'LAYERED';
     const forced = this.params.filter ?? (this.params.scene === 'stage' ? null : 'nearest');
     this.frameCache =
-      mode === 'FULL_CACHE'
+      mode === 'FULL_CACHE' || mode === 'AUTO'
         ? new WebGLFrameCacheBackend(this.three, createUnitQuadGeometry(), { budgetBytes: this.params.cacheMiB * 1024 * 1024, filter: forced ?? 'linear', mipmaps: this.params.mips, placeholder: createMissingTexture() })
         : null;
     this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel, mode, frameCache: this.frameCache });

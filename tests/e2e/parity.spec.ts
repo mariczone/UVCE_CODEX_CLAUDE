@@ -162,3 +162,24 @@ test.describe(`${MODE} mode parity`, () => {
   });
 });
 }
+
+// Milestone 3 planner: AUTO starts on SHADER and moves repeating looks to FULL_CACHE; pixels must not change.
+test('AUTO: after the planner moves both looks to the frame cache, pixels still match the reference', async ({ page }) => {
+  const assets = await loadCompiledAssets('public/uvce-compiled');
+  await openApp(page, 'scene=parity&test=1&mode=AUTO&dir=SE');
+  const before = (await api(page, (u) => u.snapshot())).character;
+  expect(before.compositedCharacters).toBe(before.visibleCharacters); // SHADER until the first window
+  // Paused clock: every frame requests the same frame per look -> potential hit ratio ~1 -> promoted after a window.
+  await api(page, (u) => {
+    for (let i = 0; i < 90; i++) u.tick();
+  });
+  const after = (await api(page, (u) => u.snapshot())).character;
+  expect(after.plannerCachedGroups).toBe(2);
+  expect(after.cachedCharacters).toBe(after.visibleCharacters);
+  const actual = decodePng(await page.locator('#scene').screenshot()).image;
+  const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: 'SE', clipId: 'idle', timeMs: 0, pixelsPerUnit: 128 });
+  const diff = diffImages(actual, expected, TOLERANCE);
+  logParity('AUTO (after promotion)', actual, expected, diff);
+  expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
+  expect((await api(page, (u) => u.auditBindings())).violations).toBe(0);
+});
