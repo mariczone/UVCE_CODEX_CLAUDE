@@ -46,6 +46,8 @@ export interface CharacterRenderMetrics {
   cacheEvictions: number;
   /** Visible layers caught holding a texture their residency handle no longer resolves to (must be 0). */
   staleBindings: number;
+  /** SHADER mode: visible characters drawn as one composited quad (the rest fell back to LAYERED). */
+  compositedCharacters: number;
 }
 
 /**

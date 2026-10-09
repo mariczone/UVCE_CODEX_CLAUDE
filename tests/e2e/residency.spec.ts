@@ -12,10 +12,11 @@ import { api, openApp } from './helpers.ts';
 const PAGE_RE = /\/uvce-compiled\/pages\//;
 
 test.describe('residency (Milestone 2)', () => {
-  test('swap storm: 100 characters, forced evictions, no stale bindings, budget respected, no refetch without eviction', async ({ page }) => {
+  for (const mode of ['LAYERED', 'SHADER'] as const) {
+  test(`swap storm (${mode}): 100 characters, forced evictions, no stale bindings, budget respected, no refetch without eviction`, async ({ page }) => {
     test.setTimeout(180_000);
     // budgetMiB=1 is far below the pinned working set: every page nobody shows is evicted at the next frame.
-    await openApp(page, 'test=1&count=100&budgetMiB=1');
+    await openApp(page, `test=1&count=100&budgetMiB=1&mode=${mode}`);
     let maxViolations = 0;
     for (let step = 0; step < 60; step++) {
       const audit = await api(page, (u, s: number) => {
@@ -30,7 +31,7 @@ test.describe('residency (Milestone 2)', () => {
     const result = await api(page, (u) => ({ stats: u.registryStats(), audit: u.auditBindings(), snap: u.snapshot(), pages: u.pageStatuses() }));
     const st = result.stats;
     console.log(
-      `[storm] 2400 slot changes: fetches ${st.fetches} (reloads ${st.reloads}), evictions ${st.evictions}, cancelled ${st.cancelled}, ` +
+      `[storm ${mode}] composited ${result.snap.character.compositedCharacters}/${result.snap.character.visibleCharacters}, 2400 slot changes: fetches ${st.fetches} (reloads ${st.reloads}), evictions ${st.evictions}, cancelled ${st.cancelled}, ` +
         `prefetch skipped ${st.prefetchSkipped}, stale handle hits ${st.staleResolves}, visible layers ${result.audit.visibleLayers}, ` +
         `binding violations ${maxViolations}, resident ${(st.residentBytes / 1048576).toFixed(2)} MiB = pinned ${(st.pinnedBytes / 1048576).toFixed(2)} MiB`,
     );
@@ -46,7 +47,9 @@ test.describe('residency (Milestone 2)', () => {
     // A page is only fetched again after it was evicted or its load was cancelled.
     for (const p of result.pages) expect(p.fetches, p.pageId).toBeLessThanOrEqual(1 + p.evictions + p.cancels);
     expect(result.snap.character.pendingLayers + result.snap.character.failedLayers).toBe(0);
+    if (mode === 'SHADER') expect(result.snap.character.compositedCharacters).toBe(result.snap.character.visibleCharacters);
   });
+  }
 
   test('evicted pages reload pixel-identically (parity scene, tiny budget)', async ({ page }) => {
     const assets = await loadCompiledAssets('public/uvce-compiled');

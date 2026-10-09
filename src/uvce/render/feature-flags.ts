@@ -16,7 +16,7 @@ export interface FeatureInfo {
 
 export const FEATURES: readonly FeatureInfo[] = [
   { id: 'LAYERED', implemented: true, enabled: true, milestone: 'M0', note: 'Reference baseline: one quad per layer, exact painter order.' },
-  { id: 'SHADER', implemented: false, enabled: false, milestone: 'M3', note: 'Single-quad shader composition; needs parity tests vs LAYERED.' },
+  { id: 'SHADER', implemented: true, enabled: false, milestone: 'M3', note: 'One composited quad per character (URL mode=SHADER); off by default until it wins benchmarks.' },
   { id: 'PARTIAL_CACHE', implemented: false, enabled: false, milestone: 'M3', note: 'Group composite cache; keys exist (partGroupKey), cache does not.' },
   { id: 'FULL_CACHE', implemented: false, enabled: false, milestone: 'M3', note: 'Full frame composite cache; keys exist (compositeFrameKey), cache does not.' },
   { id: 'WEBGPU', implemented: false, enabled: false, milestone: 'M5', note: 'WebGL2 is the baseline; sprite material is isolated for a future TSL port.' },
@@ -32,5 +32,6 @@ export function resolveRenderMode(requested: string | null): { mode: RenderMode;
   if (!requested || requested === 'LAYERED') return { mode: 'LAYERED', fallbackReason: null };
   const feature = RENDER_MODES.has(requested) ? FEATURES.find((f) => f.id === requested) : undefined;
   if (!feature) return { mode: 'LAYERED', fallbackReason: `unknown render mode "${requested}"` };
+  if (feature.implemented) return { mode: requested as RenderMode, fallbackReason: null };
   return { mode: 'LAYERED', fallbackReason: `${requested} is not implemented (${feature.milestone}): ${feature.note}` };
 }

@@ -41,7 +41,7 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
       el('p', { class: 'env', 'data-testid': 'env' }, [
         `WebGL2 · ${app.env.glRenderer}`,
         el('br'),
-        `Render mode: ${app.renderMode}${extras.fallbackReason ? ` (requested mode unavailable: ${extras.fallbackReason})` : ''}`,
+        `Render mode: ${app.renderMode}${(extras.fallbackReason ?? app.renderModeFallback) ? ` (requested mode unavailable: ${extras.fallbackReason ?? app.renderModeFallback})` : ''}`,
         el('br'),
         webgpuLine,
       ]),
@@ -202,7 +202,7 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
       const reg = snap.registry;
       stats.textContent = [
         `characters ${c.visibleCharacters} visible / ${snap.count} (culled ${c.culledCharacters}), unique looks ${c.uniqueVisibleAppearances}`,
-        `layers drawn ${c.visibleLayers}, pending ${c.pendingLayers}, failed ${c.failedLayers}, pose updates ${c.poseUpdates}`,
+        `layers drawn ${c.visibleLayers}, pending ${c.pendingLayers}, failed ${c.failedLayers}, pose updates ${c.poseUpdates}${c.mode === 'SHADER' ? `, composited ${c.compositedCharacters}/${c.visibleCharacters} characters` : ''}`,
         `draw calls ${snap.drawCalls} (all objects), triangles ${snap.triangles}, textures ${snap.textures}, programs ${snap.programs}`,
         `CPU update   p50 ${fmt(snap.updateCpu.p50)} p95 ${fmt(snap.updateCpu.p95)} ms`,
         `CPU submit   p50 ${fmt(snap.renderSubmitCpu.p50)} p95 ${fmt(snap.renderSubmitCpu.p95)} ms`,

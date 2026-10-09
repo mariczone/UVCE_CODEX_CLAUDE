@@ -4,6 +4,10 @@
  * depth); inside the group each layer mesh's renderOrder is its per-direction layer index. three.js sorts
  * transparent objects by (groupOrder, renderOrder, ...), which yields exact per-character painter order
  * without interleaving layers of different characters.
+ *
+ * SHADER mode (Milestone 3) keeps the same records, sort and residency handling but draws each character as one
+ * quad composited in the fragment shader (composite-material.ts). A character whose pose the composite cannot
+ * show exactly (a FAILED page, too many layers) falls back to LAYERED quads for that pose only.
  */
 import * as THREE from 'three';
 import { clipTimeAt, sampleClip } from '../../core/animation.ts';
@@ -16,6 +20,7 @@ import type { PageHandle, ResidencyView } from '../../assets/source-registry.ts'
 import type { AppearanceDefinition } from '../../schema/appearance.ts';
 import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
+import { MAX_COMPOSITE_LAYERS, createCompositeMaterial } from './composite-material.ts';
 import { createMissingTexture, createSpriteLayerMaterial, createUnitQuadGeometry } from './sprite-material.ts';
 
 export interface LayeredRendererOptions {
@@ -28,12 +33,29 @@ export interface LayeredRendererOptions {
   /** Texels of transparent gutter included around each quad (<= compiler padding) for filtering. */
   filterMargin?: number;
   shadows?: boolean;
+  /** LAYERED (default): one quad per layer. SHADER: one composited quad per character, LAYERED fallback per character. */
+  mode?: 'LAYERED' | 'SHADER';
+}
+
+/** SHADER-mode quad of one character: all visible layers sampled and composited in one draw. */
+interface CompositeQuad {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  /** Handle bound to slot i (uniform uMap<i>); length = layers in use. */
+  handles: PageHandle[];
 }
 
 interface LayerMesh {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
   /** Generation-checked residency handle of the bound page (null for the missing-asset placeholder). */
   handle: PageHandle | null;
+}
+
+/** One drawable layer of the current pose: a resident page (texture + handle) or a FAILED one (both null). */
+interface LayerBinding {
+  layer: ResolvedPose['layers'][number];
+  page: { width: number; height: number };
+  handle: PageHandle | null;
+  texture: THREE.Texture | null;
 }
 
 /** Anything ranked by the painter sort: characters (by feet) and registered transparent objects (by anchor). */
@@ -78,6 +100,7 @@ interface CharacterRecord extends Rankable {
   entityId: string;
   shadow: THREE.Mesh | null;
   layers: LayerMesh[];
+  composite: CompositeQuad | null;
   appearanceRef: AppearanceDefinition | null;
   resolved: ResolvedAppearance | null;
   appearanceKey: string;
@@ -128,6 +151,8 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private readonly depthBias: number;
   private readonly margin: number;
   private readonly shadowsEnabled: boolean;
+  readonly mode: 'LAYERED' | 'SHADER';
+  private readonly pixelsPerUnit: number;
   private readonly quad = createUnitQuadGeometry();
   private readonly missing = createMissingTexture();
   private readonly shadowGeometry = new THREE.CircleGeometry(SHADOW_RADIUS, 24).rotateX(-Math.PI / 2);
@@ -153,6 +178,8 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     this.depthBias = options.depthBias ?? 0.1;
     this.margin = options.filterMargin ?? 1;
     this.shadowsEnabled = options.shadows ?? true;
+    this.mode = options.mode ?? 'LAYERED';
+    this.pixelsPerUnit = this.index.manifest.rigs[0]?.pixelsPerWorldUnit ?? 128;
     this.root.name = 'uvce-characters';
     this.shadowRoot.name = 'uvce-shadows';
     // Shadows are ground decals: drawn after opaque world, before every character.
@@ -168,7 +195,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private emptyMetrics(): CharacterRenderMetrics {
     return {
       backend: 'webgl2',
-      mode: 'LAYERED',
+      mode: this.mode,
       visibleCharacters: 0,
       culledCharacters: 0,
       visibleLayers: 0,
@@ -185,6 +212,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       cacheHitRatio: null,
       cacheEvictions: 0,
       staleBindings: 0,
+      compositedCharacters: 0,
     };
   }
 
@@ -252,6 +280,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       group,
       shadow,
       layers: [],
+      composite: null,
       appearanceRef: null,
       resolved: null,
       appearanceKey: '',
@@ -290,6 +319,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private destroyRecord(rec: CharacterRecord): void {
     this.pin(rec, NO_ITEMS);
     for (const l of rec.layers) l.mesh.material.dispose();
+    rec.composite?.mesh.material.dispose();
     this.root.remove(rec.group);
     if (rec.shadow) this.shadowRoot.remove(rec.shadow);
     this.records.delete(rec.entityId);
@@ -308,6 +338,60 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     return lm;
   }
 
+  private compositeQuad(rec: CharacterRecord): CompositeQuad {
+    if (!rec.composite) {
+      const mesh = new THREE.Mesh(this.quad, createCompositeMaterial({ pixelsPerUnit: this.pixelsPerUnit, depthBias: this.depthBias, placeholder: this.missing }));
+      mesh.name = `composite:${rec.entityId}`;
+      mesh.frustumCulled = false;
+      mesh.matrixAutoUpdate = false;
+      rec.group.add(mesh);
+      rec.composite = { mesh, handles: [] };
+    }
+    return rec.composite;
+  }
+
+  /**
+   * SHADER mode: binds every drawable layer to one composite quad. Returns false (caller uses LAYERED for this
+   * character) when the composite cannot represent the pose exactly: a FAILED page (its placeholder is drawn by the
+   * LAYERED path) or more layers than composite slots.
+   */
+  private applyComposite(rec: CharacterRecord, rig: { footPivot: { x: number; y: number } }, bindings: LayerBinding[]): boolean {
+    if (bindings.length === 0 || bindings.length > MAX_COMPOSITE_LAYERS || bindings.some((b) => b.texture === null)) return false;
+    const cq = this.compositeQuad(rec);
+    const u = cq.mesh.material.uniforms;
+    const quads = u.uQuad?.value as THREE.Vector4[];
+    const uvs = u.uUv?.value as THREE.Vector4[];
+    const m = this.margin;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    cq.handles = [];
+    // Back to front: the order LAYERED quads are drawn in.
+    const ordered = [...bindings].sort((a, b) => a.layer.order - b.layer.order);
+    ordered.forEach((b, i) => {
+      const { layer, page } = b;
+      const qx = layer.dest.x - rig.footPivot.x - m;
+      const qy = layer.dest.y - rig.footPivot.y - m;
+      const qw = layer.dest.w + 2 * m;
+      const qh = layer.dest.h + 2 * m;
+      (quads[i] as THREE.Vector4).set(qx, qy, qw, qh);
+      (uvs[i] as THREE.Vector4).set((layer.region.x - m) / page.width, 1 - (layer.region.y - m) / page.height, (layer.region.x + layer.region.w + m) / page.width, 1 - (layer.region.y + layer.region.h + m) / page.height);
+      (u[`uMap${i}`] as THREE.IUniform).value = b.texture;
+      cq.handles.push(b.handle as PageHandle);
+      x0 = Math.min(x0, qx);
+      y0 = Math.min(y0, qy);
+      x1 = Math.max(x1, qx + qw);
+      y1 = Math.max(y1, qy + qh);
+    });
+    for (let i = ordered.length; i < MAX_COMPOSITE_LAYERS; i++) (u[`uMap${i}`] as THREE.IUniform).value = this.missing;
+    (u.uCount as THREE.IUniform).value = ordered.length;
+    (u.uBounds?.value as THREE.Vector4).set(x0, y0, x1 - x0, y1 - y0);
+    cq.mesh.visible = true;
+    for (const l of rec.layers) l.mesh.visible = false;
+    return true;
+  }
+
   /** Binds the pose's layers to resident pages (fresh handles); counts layers still loading or failed. */
   private applyPose(rec: CharacterRecord): void {
     rec.pendingLayers = 0;
@@ -316,8 +400,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     const pose = rec.pose;
     const rig = rec.resolved?.rig;
     if (!pose || !rig) return;
-    const m = this.margin;
-    let drawn = 0;
+    const bindings: LayerBinding[] = [];
     for (const layer of pose.layers) {
       const page = this.index.pages.get(layer.region.page);
       if (!page) continue;
@@ -327,6 +410,14 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         rec.pendingLayers++;
         continue;
       }
+      if (!texture) rec.failedLayers++;
+      bindings.push({ layer, page, handle: texture ? handle : null, texture });
+    }
+    if (this.mode === 'SHADER' && this.applyComposite(rec, rig, bindings)) return;
+    if (rec.composite) rec.composite.mesh.visible = false;
+    const m = this.margin;
+    let drawn = 0;
+    for (const { layer, page, handle, texture } of bindings) {
       const lm = this.layerMesh(rec, drawn);
       lm.handle = texture ? handle : null;
       const u = lm.mesh.material.uniforms;
@@ -341,7 +432,6 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         (u.uMap as THREE.IUniform).value = texture;
         (u.uOpacity as THREE.IUniform).value = 1;
       } else {
-        rec.failedLayers++;
         (u.uUvRect?.value as THREE.Vector4).set(0, 0, (layer.dest.w + 2 * m) / 8, (layer.dest.h + 2 * m) / 8);
         (u.uMap as THREE.IUniform).value = this.missing;
         (u.uOpacity as THREE.IUniform).value = 0.75;
@@ -434,6 +524,13 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
             staleBindings++;
           }
         }
+        const cq = rec.composite;
+        if (cq?.mesh.visible && this.compositeStaleSlots(cq) > 0) {
+          // The whole composite is one draw: hide it rather than draw any recycled texture.
+          staleBindings += this.compositeStaleSlots(cq);
+          cq.mesh.visible = false;
+          rec.poseKey = '';
+        }
         rec.auditedEpoch = this.registry.handleEpoch;
       }
       rec.group.position.set(c.position.x, c.position.y, c.position.z);
@@ -463,7 +560,14 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       r.group.renderOrder = i + 1;
     }
     let layers = 0;
-    for (const rec of visible) for (const l of rec.layers) if (l.mesh.visible) layers++;
+    let composites = 0;
+    for (const rec of visible) {
+      for (const l of rec.layers) if (l.mesh.visible) layers++;
+      if (rec.composite?.mesh.visible) {
+        layers += rec.composite.handles.length;
+        composites++;
+      }
+    }
     const reg = this.registry.stats();
     this.metrics = {
       ...this.emptyMetrics(),
@@ -476,6 +580,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       poseUpdates,
       prepareCpuMs: performance.now() - t0,
       staleBindings,
+      compositedCharacters: composites,
       sourceEstimatedBytes: reg.residentBytes,
       pendingDownloads: reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.RETRY_BACKOFF,
       cacheEvictions: reg.evictions,
@@ -522,8 +627,22 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
         }
         if (this.registry.resolve(l.handle) !== bound) violations++;
       }
+      if (rec.composite?.mesh.visible) {
+        visibleLayers += rec.composite.handles.length;
+        violations += this.compositeStaleSlots(rec.composite);
+      }
     }
     return { visibleLayers, violations };
+  }
+
+  /** Composite slots whose bound texture is not what their handle resolves to right now (0 = valid). */
+  private compositeStaleSlots(cq: CompositeQuad): number {
+    const u = cq.mesh.material.uniforms;
+    let stale = 0;
+    cq.handles.forEach((h, i) => {
+      if (this.registry.resolve(h) !== u[`uMap${i}`]?.value) stale++;
+    });
+    return stale;
   }
 
   /** Visible characters (and registered transparent objects, prefixed "obj:") in painter order, back to front. */

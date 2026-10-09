@@ -11,6 +11,7 @@ import type { AppearanceDefinition } from '../uvce/schema/appearance.ts';
 import type { CompiledManifest, ManifestIndex } from '../uvce/schema/compiled-manifest.ts';
 import { indexManifest } from '../uvce/schema/compiled-manifest.ts';
 import type { CharacterInstance, RenderMode } from '../uvce/render/contracts.ts';
+import { MAX_COMPOSITE_LAYERS } from '../uvce/render/webgl/composite-material.ts';
 import { LayeredCharacterRenderer } from '../uvce/render/webgl/layered-renderer.ts';
 import { GpuTimer } from './gpu-timer.ts';
 import { DebugOverlay, type OverlayOptions } from './overlay.ts';
@@ -68,7 +69,9 @@ export class UvceApp {
   readonly characters: LayeredCharacterRenderer;
   readonly overlay: DebugOverlay;
   readonly env: EnvironmentInfo;
-  readonly renderMode: RenderMode;
+  renderMode: RenderMode;
+  /** Why the requested render mode was replaced on this device (null = as requested). */
+  renderModeFallback: string | null = null;
   readonly gpuTimer: GpuTimer;
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   controls: OrbitControls | null = null;
@@ -153,7 +156,14 @@ export class UvceApp {
     const pixel = parity || this.params.scene === 'studio';
     this.stage = parity ? createParityStage(this.scene, PARITY_VARIANTS[this.params.variant]) : pixel ? createStudioStage(this.scene) : createStage(this.scene);
     this.camera = pixel ? createPixelCamera(1280, 720, this.pixelsPerUnit, PARITY_CAMERA_CENTER) : new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 120);
-    this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel });
+    // SHADER needs one texture unit per composite slot; otherwise fall back to the LAYERED baseline.
+    const units = Number(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
+    if (this.renderMode === 'SHADER' && units < MAX_COMPOSITE_LAYERS) {
+      this.renderModeFallback = `SHADER needs ${MAX_COMPOSITE_LAYERS} texture units, this GPU exposes ${units}`;
+      this.renderMode = 'LAYERED';
+    }
+    const mode = this.renderMode === 'SHADER' ? 'SHADER' : 'LAYERED';
+    this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel, mode });
     for (const s of (this.stage as Partial<ParityStage>).sortables ?? []) this.characters.addSortedObject(s.id, s.object);
     for (const layer of this.params.hide) this.characters.setLayerHidden(layer, true);
     this.overlay = new DebugOverlay(opts.overlayCanvas);

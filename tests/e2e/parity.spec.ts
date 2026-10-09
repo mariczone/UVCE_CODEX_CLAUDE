@@ -31,6 +31,14 @@ async function capture(page: import('@playwright/test').Page, query: string): Pr
   return decodePng(await page.locator('#scene').screenshot()).image;
 }
 
+// Milestone 1 scene variants: crossing characters, arch occlusion, translucent glass sorted with sprites.
+const VARIANT_CASES_SHARED = [
+  { variant: 'crossing', timeMs: 400, order: ['hero', 'npc-static'] }, // hero still behind the companion
+  { variant: 'crossing', timeMs: 2000, order: ['npc-static', 'hero'] }, // after crossing: hero in front
+  { variant: 'arch', timeMs: 0, order: ['hero', 'npc-front'] },
+  { variant: 'glass', timeMs: 0, order: ['hero', 'obj:glass', 'npc-front'] },
+] as const;
+
 async function saveArtifacts(name: string, images: Record<string, RgbaImage>): Promise<void> {
   await mkdir('test-results/parity', { recursive: true });
   for (const [k, img] of Object.entries(images)) await writeFile(`test-results/parity/${name}-${k}.png`, encodePng(img));
@@ -69,14 +77,7 @@ test.describe('GPU vs CPU reference parity', () => {
     expect(diffImages(actual, expected, TOLERANCE).mismatched).toBe(0);
   });
 
-  // Milestone 1 scene variants: crossing characters, arch occlusion, translucent glass sorted with sprites.
-  const VARIANT_CASES = [
-    { variant: 'crossing', timeMs: 400, order: ['hero', 'npc-static'] }, // hero still behind the companion
-    { variant: 'crossing', timeMs: 2000, order: ['npc-static', 'hero'] }, // after crossing: hero in front
-    { variant: 'arch', timeMs: 0, order: ['hero', 'npc-front'] },
-    { variant: 'glass', timeMs: 0, order: ['hero', 'obj:glass', 'npc-front'] },
-  ] as const;
-  for (const c of VARIANT_CASES) {
+  for (const c of VARIANT_CASES_SHARED) {
     test(`variant ${c.variant} t=${c.timeMs}ms: painter order and pixels match the reference`, async ({ page }) => {
       const assets = await loadCompiledAssets('public/uvce-compiled');
       const actual = await capture(page, `scene=parity&variant=${c.variant}&test=1&dir=SE&t=${c.timeMs}`);
@@ -105,5 +106,56 @@ test.describe('GPU vs CPU reference parity', () => {
     const unsortedGlass = diffImages(glass, unsorted, TOLERANCE).mismatched;
     console.log(`[parity] variant negative controls: stale crossing order ${staleOrder} px differ, unsorted glass ${unsortedGlass} px differ`);
     expect(unsortedGlass).toBeGreaterThan(300);
+  });
+});
+
+// Milestone 3: the SHADER mode (one composited quad per character) must pass the same oracle as LAYERED.
+test.describe('SHADER mode parity', () => {
+  /** Every visible character must really be composited: a silent LAYERED fallback would make this suite meaningless. */
+  async function expectAllComposited(page: import('@playwright/test').Page): Promise<void> {
+    const c = (await api(page, (u) => u.snapshot())).character;
+    expect(c.compositedCharacters).toBe(c.visibleCharacters);
+    expect(c.visibleCharacters).toBeGreaterThan(0);
+  }
+
+  for (const c of CASES) {
+    test(`SHADER ${c.direction} ${c.clipId} t=${c.timeMs}ms matches the reference compositor`, async ({ page }) => {
+      const assets = await loadCompiledAssets('public/uvce-compiled');
+      const actual = await capture(page, `scene=parity&test=1&mode=SHADER&dir=${c.direction}&clip=${c.clipId}&t=${c.timeMs}`);
+      await expectAllComposited(page);
+      const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: c.direction, clipId: c.clipId, timeMs: c.timeMs, pixelsPerUnit: 128 });
+      const diff = diffImages(actual, expected, TOLERANCE);
+      logParity(`SHADER ${c.direction} ${c.clipId} t=${c.timeMs}`, actual, expected, diff);
+      if (diff.mismatched > 0) await saveArtifacts(`shader-${c.direction}-${c.clipId}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
+      expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
+    });
+  }
+
+  for (const c of VARIANT_CASES_SHARED) {
+    test(`SHADER variant ${c.variant} t=${c.timeMs}ms: painter order and pixels match the reference`, async ({ page }) => {
+      const assets = await loadCompiledAssets('public/uvce-compiled');
+      const actual = await capture(page, `scene=parity&variant=${c.variant}&test=1&mode=SHADER&dir=SE&t=${c.timeMs}`);
+      await expectAllComposited(page);
+      expect(await api(page, (u) => u.paintOrder())).toEqual(c.order);
+      const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, variant: c.variant, direction: 'SE', clipId: 'idle', timeMs: c.timeMs, pixelsPerUnit: 128 });
+      const diff = diffImages(actual, expected, TOLERANCE);
+      logParity(`SHADER variant ${c.variant} t=${c.timeMs}`, actual, expected, diff);
+      if (diff.mismatched > 0) await saveArtifacts(`shader-${c.variant}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
+      expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
+    });
+  }
+
+  test('SHADER negative control and draw-call reduction: a hidden hat is detected; one draw per character', async ({ page }) => {
+    const assets = await loadCompiledAssets('public/uvce-compiled');
+    const expected = buildParityExpected(assets, { width: 1280, height: 720, direction: 'SE', clipId: 'idle', timeMs: 0, pixelsPerUnit: 128 });
+    const noHat = await capture(page, 'scene=parity&test=1&mode=SHADER&dir=SE&hide=hat');
+    const hatMissing = diffImages(noHat, expected, TOLERANCE).mismatched;
+    expect(hatMissing).toBeGreaterThan(500);
+    const shaderDraws = (await api(page, (u) => u.snapshot())).drawCalls;
+    await capture(page, 'scene=parity&test=1&dir=SE&hide=hat');
+    const layeredDraws = (await api(page, (u) => u.snapshot())).drawCalls;
+    console.log(`[parity] SHADER negative control: hat hidden ${hatMissing} px differ; draw calls LAYERED ${layeredDraws} -> SHADER ${shaderDraws}`);
+    // Parity scene: 2 characters (+ wall, box): LAYERED draws every layer, SHADER one quad per character.
+    expect(shaderDraws).toBeLessThan(layeredDraws);
   });
 });
