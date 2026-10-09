@@ -46,6 +46,11 @@ export const DEFAULT_PLANNER_OPTIONS: Omit<PlannerOptions, 'capacityCells'> = {
   requirePressure: true,
 };
 
+/** Opaque reference to a group, returned by enter(): lets a caller count requests without a map lookup. */
+export interface PlannerGroupRef {
+  readonly __plannerGroup: true;
+}
+
 export interface PlannerDecision {
   group: string;
   to: 'FULL_CACHE' | 'SHADER';
@@ -123,22 +128,30 @@ export class RenderPlanner {
     if (g.frameKeys.size > g.peak) g.peak = g.frameKeys.size;
   }
 
-  /** A visible character of group is drawn this frame (call every frame; O(1)). */
+  /** A visible character of `group` is drawn this frame (call every frame; one map lookup). */
   request(group: string): void {
     const g = this.group(group);
     g.lastSeen = this.frame;
     g.requests++;
   }
 
-  /** A character of group starts showing rameKey (call only when its frame changes). */
-  enter(group: string, frameKey: string): void {
+  /** Same as request() for a reference returned by enter(): O(1), no lookup (valid while that frame is shown). */
+  requestRef(ref: PlannerGroupRef): void {
+    const g = ref as unknown as Group;
+    g.lastSeen = this.frame;
+    g.requests++;
+  }
+
+  /** A character of `group` starts showing `frameKey` (call only when its frame changes). */
+  enter(group: string, frameKey: string): PlannerGroupRef {
     const g = this.group(group);
     g.live.set(frameKey, (g.live.get(frameKey) ?? 0) + 1);
     g.keys.add(frameKey);
     if (g.live.size > g.peak) g.peak = g.live.size;
+    return g as unknown as PlannerGroupRef;
   }
 
-  /** A character of group stops showing rameKey (frame change, hidden, culled or removed). */
+  /** A character of `group` stops showing `frameKey` (frame change, hidden, culled or removed). */
   leave(group: string, frameKey: string): void {
     const g = this.groups.get(group);
     if (!g) return;
@@ -162,6 +175,11 @@ export class RenderPlanner {
 
   isCached(group: string): boolean {
     return this.groups.get(group)?.cached === true;
+  }
+
+  /** isCached() for a reference from enter(): no lookup. */
+  isCachedRef(ref: PlannerGroupRef): boolean {
+    return (ref as unknown as Group).cached;
   }
 
   /** Call once per frame after all observations; evaluates and switches modes at window boundaries. */

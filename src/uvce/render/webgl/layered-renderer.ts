@@ -22,7 +22,7 @@ import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
 import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, setCompositeLayers } from './composite-material.ts';
 import { type BakeJob, type CacheCell, CANVAS_SIZE, CELL_OFFSET, type FrameCacheBackend } from './frame-cache.ts';
-import { type PlannerDecision, RenderPlanner } from '../planner.ts';
+import { type PlannerDecision, type PlannerGroupRef, RenderPlanner } from '../planner.ts';
 import { createMissingTexture, createSpriteLayerMaterial, createUnitQuadGeometry } from './sprite-material.ts';
 
 export interface LayeredRendererOptions {
@@ -121,7 +121,7 @@ interface CharacterRecord extends Rankable {
   /** Frame-cache key of the current pose (appearance|clip|direction|frame|debug toggles), built on pose change. */
   frameKey: string;
   /** AUTO: the group/frame this character is registered with in the planner (null = not registered). */
-  plannerEntry: { group: string; key: string } | null;
+  plannerEntry: { group: string; key: string; ref: PlannerGroupRef } | null;
   appearanceRef: AppearanceDefinition | null;
   resolved: ResolvedAppearance | null;
   appearanceKey: string;
@@ -377,10 +377,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     if (show && e && e.group === rec.appearanceKey && e.key === rec.frameKey) return;
     if (e) planner.leave(e.group, e.key);
     rec.plannerEntry = null;
-    if (show) {
-      planner.enter(rec.appearanceKey, rec.frameKey);
-      rec.plannerEntry = { group: rec.appearanceKey, key: rec.frameKey };
-    }
+    if (show) rec.plannerEntry = { group: rec.appearanceKey, key: rec.frameKey, ref: planner.enter(rec.appearanceKey, rec.frameKey) };
   }
 
   private hideRecord(rec: CharacterRecord): void {
@@ -513,7 +510,10 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
 
   /** FULL_CACHE: always; AUTO: when the planner put this character's appearance group on the cache. */
   private usesCache(rec: CharacterRecord): boolean {
-    return this.mode === 'FULL_CACHE' || (this.mode === 'AUTO' && this.planner?.isCached(rec.appearanceKey) === true);
+    if (this.mode === 'FULL_CACHE') return true;
+    if (this.mode !== 'AUTO' || !this.planner) return false;
+    const e = rec.plannerEntry; // the group reference saves a map lookup per character per frame
+    return e !== null && e.group === rec.appearanceKey ? this.planner.isCachedRef(e.ref) : this.planner.isCached(rec.appearanceKey);
   }
 
   private cachedQuad(rec: CharacterRecord): THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> {
@@ -729,8 +729,10 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       if (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') {
         const frameKey = rec.frameKey;
         if (this.planner) {
-          this.planner.request(rec.appearanceKey);
-          this.plannerShow(rec, true);
+          // Steady frames: two reference checks and a counter; the planner hears about a frame only when it changes.
+          const e = rec.plannerEntry;
+          if (!e || e.key !== frameKey || e.group !== rec.appearanceKey) this.plannerShow(rec, true);
+          this.planner.requestRef((rec.plannerEntry as NonNullable<typeof rec.plannerEntry>).ref);
         }
         if (this.usesCache(rec)) {
           const hitsBefore = cacheCounters.hits;
