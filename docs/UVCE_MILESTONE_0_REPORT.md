@@ -2,6 +2,9 @@
 
 Date: 2026-10-09 · Branch: `claude/nifty-thompson-7t015u` · Art: synthetic placeholders only.
 
+> Follow-up: Milestones 1 and 2 are reported in [`UVCE_MILESTONE_1_2_REPORT.md`](UVCE_MILESTONE_1_2_REPORT.md). The
+> sections below describe the state at Milestone 0; its "next milestones" list was the plan at that time.
+
 **Verdict.** Milestone 0 is complete against blueprint §14/§18 (one character switching 3 hats, 3 armors and
 3 weapons live, 8 directions, idle/walk, correct alpha, validation and unit tests) and every item of the first-task
 prompt is implemented. Milestone 1 is substantially covered (layered baseline renderer, 1/20/100/300 scenes,

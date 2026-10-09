@@ -64,7 +64,9 @@ test.describe('residency (Milestone 2)', () => {
     expect(stats.reloads).toBeGreaterThanOrEqual(3); // hat_01, armor_01, weapon_01 came back after eviction
     const actual = decodePng(await page.locator('#scene').screenshot()).image;
     const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: 'SE', clipId: 'idle', timeMs: 0, pixelsPerUnit: 128 });
-    expect(diffImages(actual, expected, 3).mismatched).toBe(0);
+    const mismatched = diffImages(actual, expected, 3).mismatched;
+    console.log(`[evict-reload] evictions ${stats.evictions}, reloads ${stats.reloads}, pixels beyond ±3 after reloads: ${mismatched}`);
+    expect(mismatched).toBe(0);
     expect((await api(page, (u) => u.auditBindings())).violations).toBe(0);
   });
 
@@ -93,6 +95,11 @@ test.describe('residency (Milestone 2)', () => {
     expect(pageRequests).toBe(requestsBefore);
     const actual = decodePng(await page.locator('#scene').screenshot()).image;
     const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: 'SE', clipId: 'idle', timeMs: 0, pixelsPerUnit: 128 });
-    expect(diffImages(actual, expected, 3).mismatched).toBe(0);
+    const mismatched = diffImages(actual, expected, 3).mismatched;
+    console.log(
+      `[context-loss] resident ${before.byState.RESIDENT} -> 0 -> ${after.byState.RESIDENT}, re-uploads ${after.uploads - before.uploads}, ` +
+        `new page requests ${pageRequests - requestsBefore}, fetches ${before.fetches} -> ${after.fetches}, pixels beyond ±3: ${mismatched}`,
+    );
+    expect(mismatched).toBe(0);
   });
 });

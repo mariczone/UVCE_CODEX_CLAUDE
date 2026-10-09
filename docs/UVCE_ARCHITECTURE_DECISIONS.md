@@ -1,7 +1,8 @@
-# UVCE Architecture Decisions (ADRs) — Milestone 0
+# UVCE Architecture Decisions (ADRs) — Milestones 0–2
 
 Short decision records for the POC. Each lists the decision, why, and what would make us revisit it.
-Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0/M1**.
+Numbering follows the topics required by blueprint §21. Status of all: **accepted for M0–M2**; paragraphs marked
+**(M1)** / **(M2)** record what those milestones changed.
 
 ## ADR-01 Standalone single-package POC next to the starter pack
 
@@ -63,8 +64,15 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   box *between* them in depth and a wall behind; the GPU image equals the CPU expectation (back char, box, front
   char) within ±3/255 on all 921,600 pixels, and a negative control shows that an image ignoring depth differs on
   2,052 pixels (test threshold >800). `docs/screenshots/parity-scene.png`, `app-crowd-100.png` (wall, pillars, arch occluding sprites).
-- **Known limits:** transparent world geometry is not interleaved with characters; very tall sprites under low
-  overhangs use the foot depth for the whole sprite (classic billboard trade-off).
+- **(M1) Transparent world objects** (glass, water, bridges) are registered with `addSortedObject(id, object)` and
+  ranked in the *same* back-to-front sort as the characters (key `obj:<id>`, depth of the object's anchor), so a
+  character behind a pane is tinted and one in front is not. Opaque objects need nothing: the depth test handles
+  them. **Proof:** parity variants `crossing` (two characters swap order mid-walk), `arch` (pillars and lintel
+  occlude a character, another stands in front) and `glass` (50 % pane between two characters) all match the CPU
+  reference, and each has a negative control (stale order / unsorted glass differ by > 300 pixels).
+- **Known limits:** very tall sprites under low overhangs use the foot depth for the whole sprite (classic
+  billboard trade-off); a sorted transparent object has one depth too, so large transparent surfaces that span
+  many depths must be split.
 
 ## ADR-05 Backend: WebGL2 `WebGLRenderer` baseline; WebGPU only behind a flag
 
@@ -78,16 +86,29 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
 ## ADR-06 Color space, alpha, filtering, padding
 
 - **Storage:** straight-alpha 8-bit sRGB PNG pages (`alpha: "straight"`, `colorSpace: "srgb"` in the manifest).
-- **Upload:** `premultiplyAlpha = true` (UNPACK_PREMULTIPLY_ALPHA_WEBGL) so bilinear filtering is correct at
-  edges; `NoColorSpace` (no sRGB→linear decode, no browser color conversion).
+- **Decode/upload (M2):** `createImageBitmap(blob, { premultiplyAlpha: 'premultiply', colorSpaceConversion: 'none',
+  imageOrientation: 'flipY' })` decodes off the main thread; the texture is uploaded with `premultiplyAlpha = false`
+  and `flipY = false` because both were applied at decode (WebGL ignores the UNPACK_* flags for ImageBitmaps).
+  Premultiplied texels keep bilinear filtering and mip averaging correct at edges; `NoColorSpace` = no sRGB→linear
+  decode and no browser colour conversion. (M0 decoded via `<img>` and premultiplied on upload: same result.)
 - **Blend:** shader outputs the premultiplied texel unchanged; blending `ONE, ONE_MINUS_SRC_ALPHA` into the sRGB
   canvas. Result = straight-alpha "over" in 8-bit sRGB space — the same math as the CPU reference
   (`overPixel`), so there is exactly one premultiplication. 3D lit props use three.js' linear workflow with sRGB
   output; sprites deliberately stay display-referred like conventional 2D art.
 - **Filtering:** pages declare `linear` or `nearest`; fixtures are `linear`; parity/studio scenes force
-  `nearest`. **No mipmaps in M0** (mip-safe gutters are an M2 compiler task) — minified crowds alias slightly.
-- **Padding:** 2 px transparent gutter around every packed image; quads include 1 extra texel on each side so
-  bilinear edges fade into transparent texels instead of being clipped.
+  `nearest` without mipmaps (pixel-exact tests).
+- **(M2) Mip-safe layout:** linear pages carry `mipLevels` L (default 3). The compiler starts every image on a
+  2^L-texel boundary and separates images (and the page border) by at least 2^L transparent texels (≥ the 2 px
+  padding), so mip levels 0..L never average two images together and bilinear taps at those levels only reach
+  transparent texels. The uploader generates the chain and sets `TEXTURE_MAX_LEVEL = L` on the raw GL texture
+  (three.js never sets it), so deeper, image-mixing levels are never sampled; if the GL handle is unavailable it
+  falls back to no mipmaps rather than risk bleed. **Proof:** a unit test box-filters every packed page like GL
+  does and finds 0 mixed texels and 0 cross-image bilinear reach at levels 1..3; shrinking the gap to 2 px makes it
+  fail. **Cost** for the fixtures: level-0 page bytes 4.58 → 6.06 MiB (+32 %, alignment and gutters), 8.08 MiB with
+  chains; trilinear sampling also costs more raster time (see `docs/benchmark-results/m2/`). `mips=0` turns
+  chains off for A/B comparisons.
+- **Padding:** 2 px transparent gutter (2^L when mipmapped); quads include 1 extra texel on each side so bilinear
+  edges fade into transparent texels instead of being clipped.
 - **Tolerance:** parity tests allow ±3/255 per channel. Measured on SwiftShader: max delta 2, and only 666–1,221 of
   921,600 pixels per case are not bit-exact (anti-aliased edges: premultiply-on-upload and blend rounding).
 
@@ -99,8 +120,9 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
 
 ## ADR-08 Manifests, versions, hashing, migration
 
-- **Schemas (Zod 4, versioned strings):** `uvce-source-manifest-v1` (compiler input: PNG paths, anchors, sockets),
-  `uvce-compiled-manifest-v1` (runtime), `uvce-appearance-v2`. Structural Zod checks plus semantic checks
+- **Schemas (Zod 4, versioned strings):** `uvce-source-manifest-v1` (compiler input: PNG paths, anchors, sockets;
+  M2 adds optional `atlasGroup` and `mipLevels` per item), `uvce-compiled-manifest-v2` (runtime; v1 in M0),
+  `uvce-appearance-v2`. Structural Zod checks plus semantic checks
   (layer order permutations, socket completeness, frame counts vs clips, slot/layer ownership, image regions
   inside pages, aliases). The browser validates the manifest before rendering.
 - **Content hashes:** image key = SHA-256 over the *trimmed RGBA pixels* (independent of PNG encoder and atlas
@@ -112,20 +134,59 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   (hat swap changes HEAD, not TORSO). `compositeFrameKey` uses the logical frame index (shared across phase
   offsets), direction, clip, tier, compiler version and debug layer toggles. Dye/variant are keyed
   conservatively although M0 does not render them yet.
+- **(M2) Compiled manifest v2:** pages carry `group`, `items` (who uses the page) and `mipLevels`; items carry
+  `atlasGroup`; stats add `pageBytesWithMips` and `crossGroupSharedImages`. New semantic checks: image regions are
+  aligned to their page's 2^mipLevels (`image.mip-align`) and every page an item lists also lists the item. The
+  compiler (0.2.0) validates every frame of every item before packing anything (a bad item fails the build before
+  any output is written).
+- **(M2) Atlas groups:** an item may declare an `atlasGroup` (a co-use bundle packed onto shared pages); the default
+  is the item itself, i.e. M0's per-item pages. The fixtures put `body_base` + `head_base` (always used together) in
+  `core`: one page instead of two. Dedupe is global — an image already placed by another group is referenced, not
+  copied. A group may not mix filters or mip levels (`item.atlas-group`). The page stays the residency unit, so a
+  hat swap still fetches only that hat's page; packing groups from usage statistics is future work.
 - **Migration:** `parseAppearance` accepts the starter-pack `uvce-appearance-v1` example and migrates it to v2,
   reporting every dropped field (placeholder `demo-*` hashes, entityId, animation, footPivotPx). Explicit
   manifest aliases map its ids (`sword_01→weapon_01`, …). Unknown versions are rejected.
 
-## ADR-09 Residency and fallbacks (M0 subset)
+## ADR-09 Residency, budgets and fallbacks (M2: registry v2)
 
-- `SourceAssetRegistry`: `UNRESOLVED → FETCHING → RESIDENT | FAILED` per page; concurrent requests share one
-  promise; pages are uploaded to the GPU eagerly (`initTexture`) so RESIDENT means usable.
-- The residency unit is the **per-item page**: equipping an item fetches only that item's page(s); unchanged
-  items are never re-fetched (e2e test counts network requests).
-- FAILED pages are never retried automatically (explicit `retry()` only) and their layers draw a magenta checker
-  placeholder; the rest of the character keeps rendering.
-- **Not yet:** budgets, eviction, generation-checked handles, retry/backoff, prefetch (M2). Byte figures are
-  owner-calculated RGBA8 estimates, not measured VRAM.
+- **States per page:** `UNRESOLVED → REQUESTED → FETCHING → DECODED → UPLOAD_QUEUED → RESIDENT`, plus
+  `RETRY_BACKOFF`, `FAILED`, `EVICTED` (`src/uvce/assets/source-registry.ts`). Network + decode and GPU upload are
+  injected ports (`src/uvce/render/webgl/page-io.ts` in the browser, fakes with a manual clock in unit tests).
+- **Pins:** a visible character pins its items (refcount per page); pinned pages are never evicted. The renderer
+  keeps one frozen item array per appearance and compares pins by identity, so steady-state frames make no
+  registry calls at all.
+- **Budget:** resident GPU bytes (RGBA8 incl. mip chain — an estimate, not measured VRAM) above `budgetBytes`
+  (default 256 MiB, blueprint §8.3; URL `budgetMiB=`) evict unpinned pages LRU-first down to `lowWaterRatio`
+  (0.75, hysteresis). A page's LRU stamp is the frame it lost its last pin (only pinned pages are drawn), so there is
+  no per-layer "touch" in the frame loop. If the pinned set alone exceeds the budget nothing pinned is evicted and
+  `overBudget` is reported: correctness before memory.
+- **Prefetch:** frustum-culled characters unpin and issue **one** low-priority prefetch per culling (not per
+  frame). Prefetches are opportunistic: one that would push resident + in-flight bytes above the low watermark is
+  dropped (`prefetchSkipped`), and a prefetched page evicted by the budget is not requested again until the
+  character is visible or culled anew — no fetch/evict thrash (unit-tested).
+- **Network:** demand before prefetch, then FIFO; ≤ 4 concurrent fetches; a load nobody needs any more is aborted
+  (`AbortController`) or its decoded copy released. Transient failures (network error, HTTP 408/429/5xx) retry with
+  exponential backoff (250 ms, 500 ms; 3 attempts); 404 and decode errors fail at once. FAILED layers draw a magenta
+  checker placeholder and the rest of the character keeps rendering; `retry()` is explicit (UI/debug).
+- **Uploads:** at most 2 per frame, in `beginFrame()` between frames, which bounds upload hitches. Trade-off:
+  time-to-ready grows when frames are slow (12 pages need ≥ 6 frames; visible in the SwiftShader runs).
+- **Handles:** a RESIDENT page owns a slot; `PageHandle = { index, generation }`. Eviction, context loss and
+  dispose free the slot and bump its generation, so an old handle can never resolve to a page that later reuses the
+  slot (ABA guard). Renderers bind through `handleFor` / `resolve` and re-bind whenever `revision` changes (every
+  transition into or out of RESIDENT/FAILED bumps it). Independently of that, a per-frame audit re-checks a
+  character's layer handles whenever `handleEpoch` (count of slot frees) has moved since it was bound, and hides any
+  stale layer instead of drawing a recycled texture — O(1) per character in steady state.
+- **Context loss (M1):** pages keep their decoded `ImageBitmap` (`keepDecodedCopies`); on `webglcontextlost`
+  resident pages become UPLOAD_QUEUED and every handle goes stale; after `webglcontextrestored` they are re-uploaded
+  without any network request. Without decoded copies they would be refetched (unit-tested both ways). The GPU
+  timer re-acquires its extension after a restore.
+- **Proof:** registry unit tests (concurrency, dedupe, cancellation, backoff, 404, LRU, budget, headroom, ABA,
+  context loss) and renderer unit tests (identity pins, prefetch once per culling, defence-in-depth audit); e2e
+  swap storm (100 characters, 1 MiB budget, 60 × 40 slot changes: evictions and reloads happen, 0 binding
+  violations, resident = pinned), evict/reload parity and context-loss parity (pixel-exact, no page request).
+- **Not yet:** usage statistics for packing, KTX2/Basis, hot manifest patching, per-device budgets, measured VRAM,
+  explicit queues instead of the per-frame O(pages) scan in `beginFrame` (12 pages: measured ≈ 0.02 ms).
 
 ## ADR-10 Benchmark protocol
 
@@ -136,6 +197,12 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   software rasterization and are labelled as such; **no FPS or GPU performance is claimed**. CPU update and
   render-submit times are the meaningful (still device-specific) numbers. Run with `--gpu` on a workstation for
   hardware numbers.
+- **(M2) Same-session controls.** The cloud container's speed drifts: the unchanged M0 build measured ~20–25 % slower
+  in a later session than in its own baseline run. Comparisons between builds are therefore only made against a
+  control measured in the same session (`docs/benchmark-results/m2/2026-10-09/`), never against an old run.
+- **(M2) Attribution tools:** `--query "&mips=0"` runs the same protocol with extra URL parameters; `pnpm bench:stages`
+  stops the rAF loop and times each stage of a frame in isolation (registry pump, world, prepare, submit, raster
+  wait via a 1-px `readPixels`), at full size and clipped to a 1-px scissor, optionally A/B against another build.
 
 ## ADR-11 Optional AI / Blender integrations
 
@@ -147,12 +214,15 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
 ## ADR-12 Testing strategy and pinned toolchain
 
 - **Oracle:** the CPU reference compositor consumes the same `ResolvedPose` as the GPU renderer.
-- Unit (Vitest): schemas, keys, directions, timing, resolution (exhaustive 24,576-pose sweep), generator
-  determinism, compiler round-trip, packing, goldens (8 PNGs + 384-entry hash table), registry, crowd.
-- E2E (Playwright): boot/capabilities, deterministic crowds, camera-relative directions, GPU-vs-CPU parity on 6
-  poses + negative controls, equipment swaps with request counting, layer toggles, failed-page fallback.
-- Mutation checks were run by hand (swapped painter order, altered blend rounding, removed packer clamp): each
-  was caught by the intended test.
+- Unit (Vitest, 94 tests): schemas, keys, directions, timing, resolution (exhaustive 24,576-pose sweep), generator
+  determinism, compiler round-trip, packing, atlas groups, cross-group dedupe, mip-bleed simulation, goldens (8 PNGs
+  + 384-entry hash table), registry v2 state machine (12), renderer residency bookkeeping (3), crowd.
+- E2E (Playwright, 22 tests): boot/capabilities, deterministic crowds, camera-relative directions, GPU-vs-CPU parity
+  on 6 poses + 4 scene variants (crossing ×2, arch, glass) with negative controls, equipment swaps with request
+  counting, layer toggles, failed-page fallback, swap storm, evict/reload parity, context-loss parity.
+- Mutation checks were run by hand: M0 (swapped painter order, altered blend rounding, removed packer clamp) and M2
+  (2 px gap instead of 2^L, no LRU stamp on release, no revision bump on a failed upload, no prefetch headroom
+  check, prefetch every frame, audit disabled, handle epoch never bumped). Each was caught by the intended test.
 - **Pins (exact):** three 0.186.1, zod 4.6.5, vite 8.3.3, vitest 4.1.11, typescript 7.0.2, pngjs 7.0.0,
   @playwright/test 1.56.1 (matches the pre-installed Chromium 141 build 1194; newer Playwright needs
   `pnpm exec playwright install chromium`), Node ≥ 22.18 (native TypeScript type stripping runs the tools;

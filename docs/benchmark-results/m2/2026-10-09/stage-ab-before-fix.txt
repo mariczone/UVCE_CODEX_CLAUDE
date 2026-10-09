@@ -1,0 +1,55 @@
+# Scratch stage A/B BEFORE the fix (commit 71d731a = 'M2', 3db7a20 = 'M0'), recorded 2026-10-09.
+# Same stage split as the later bench:stages tool, but frames were separated with gl.finish(), which is only a
+# flush in Chromium, so the 'finish' column is meaningless here; prepare/submit columns are interleaved CPU timings.
+# Columns: per-frame p50 (ms) per run; last block = medians across the two runs.
+M0|1|full rep0 pump=0 world=0.030 prepare=0.035 submit=0.202 finish=0.020 calls=16 layers=8
+M0|1|scissor1px rep0 pump=0 world=0.030 prepare=0.035 submit=0.188 finish=0.010 calls=16 layers=8
+M2|1|full rep0 pump=0.010 world=0.035 prepare=0.055 submit=0.205 finish=0.015 calls=16 layers=8
+M2|1|scissor1px rep0 pump=0.010 world=0.025 prepare=0.042 submit=0.180 finish=0.015 calls=16 layers=8
+M0|1|full rep1 pump=0 world=0.025 prepare=0.030 submit=0.195 finish=0.020 calls=16 layers=8
+M0|1|scissor1px rep1 pump=0 world=0.035 prepare=0.040 submit=0.220 finish=0.020 calls=16 layers=8
+M2|1|full rep1 pump=0.010 world=0.030 prepare=0.045 submit=0.210 finish=0.010 calls=16 layers=8
+M2|1|scissor1px rep1 pump=0.010 world=0.030 prepare=0.050 submit=0.215 finish=0.020 calls=16 layers=8
+M0|20|full rep0 pump=0 world=0.035 prepare=0.090 submit=0.525 finish=0.020 calls=150 layers=123
+M0|20|scissor1px rep0 pump=0 world=0.035 prepare=0.097 submit=0.545 finish=0.020 calls=150 layers=123
+M2|20|full rep0 pump=0.010 world=0.030 prepare=0.130 submit=0.485 finish=0.020 calls=150 layers=123
+M2|20|scissor1px rep0 pump=0.010 world=0.030 prepare=0.135 submit=0.508 finish=0.020 calls=150 layers=123
+M0|20|full rep1 pump=0 world=0.035 prepare=0.095 submit=0.518 finish=0.020 calls=150 layers=123
+M0|20|scissor1px rep1 pump=0 world=0.035 prepare=0.095 submit=0.488 finish=0.020 calls=150 layers=123
+M2|20|full rep1 pump=0.010 world=0.035 prepare=0.150 submit=0.565 finish=0.020 calls=150 layers=123
+M2|20|scissor1px rep1 pump=0.010 world=0.030 prepare=0.165 submit=0.565 finish=0.025 calls=150 layers=123
+M0|100|full rep0 pump=0 world=0.045 prepare=0.370 submit=2.505 finish=0.010 calls=718 layers=611
+M0|100|scissor1px rep0 pump=0 world=0.045 prepare=0.295 submit=1.810 finish=0.010 calls=718 layers=611
+M2|100|full rep0 pump=0.010 world=0.045 prepare=0.550 submit=2.647 finish=0.015 calls=718 layers=611
+M2|100|scissor1px rep0 pump=0.010 world=0.040 prepare=0.615 submit=2.507 finish=0.020 calls=718 layers=611
+M0|100|full rep1 pump=0 world=0.045 prepare=0.340 submit=2.443 finish=0.010 calls=718 layers=611
+M0|100|scissor1px rep1 pump=0 world=0.045 prepare=0.345 submit=2.425 finish=0.015 calls=718 layers=611
+M2|100|full rep1 pump=0.010 world=0.045 prepare=0.555 submit=3.020 finish=0.015 calls=718 layers=611
+M2|100|scissor1px rep1 pump=0.010 world=0.040 prepare=0.583 submit=2.515 finish=0.015 calls=718 layers=611
+M0|300|full rep0 pump=0 world=0.080 prepare=0.948 submit=13.567 finish=0.015 calls=2108 layers=1802
+M0|300|scissor1px rep0 pump=0 world=0.075 prepare=0.910 submit=10.515 finish=0.015 calls=2109 layers=1803
+M2|300|full rep0 pump=0.015 world=0.075 prepare=1.398 submit=9.767 finish=0.018 calls=2111 layers=1805
+M2|300|scissor1px rep0 pump=0.015 world=0.073 prepare=1.538 submit=25.048 finish=0.015 calls=2113 layers=1807
+M0|300|full rep1 pump=0 world=0.075 prepare=0.848 submit=12.847 finish=0.015 calls=2109 layers=1803
+M0|300|scissor1px rep1 pump=0 world=0.070 prepare=0.853 submit=10.645 finish=0.010 calls=2109 layers=1803
+M2|300|full rep1 pump=0.015 world=0.065 prepare=1.540 submit=11.535 finish=0.015 calls=2114 layers=1808
+M2|300|scissor1px rep1 pump=0.015 world=0.075 prepare=1.530 submit=9.492 finish=0.015 calls=2112 layers=1806
+
+== medians across reps (ms, p50 per run) ==
+build|count|mode | pump | world | prepare | submit | finish(raster) | calls | layers
+M0|1|full | 0.000 | 0.028 | 0.033 | 0.199 | 0.020 | 16.000 | 8.000
+M0|1|scissor1px | 0.000 | 0.032 | 0.038 | 0.204 | 0.015 | 16.000 | 8.000
+M2|1|full | 0.010 | 0.032 | 0.050 | 0.208 | 0.012 | 16.000 | 8.000
+M2|1|scissor1px | 0.010 | 0.028 | 0.046 | 0.198 | 0.018 | 16.000 | 8.000
+M0|20|full | 0.000 | 0.035 | 0.093 | 0.521 | 0.020 | 150.000 | 123.000
+M0|20|scissor1px | 0.000 | 0.035 | 0.096 | 0.516 | 0.020 | 150.000 | 123.000
+M2|20|full | 0.010 | 0.032 | 0.140 | 0.525 | 0.020 | 150.000 | 123.000
+M2|20|scissor1px | 0.010 | 0.030 | 0.150 | 0.536 | 0.022 | 150.000 | 123.000
+M0|100|full | 0.000 | 0.045 | 0.355 | 2.474 | 0.010 | 718.000 | 611.000
+M0|100|scissor1px | 0.000 | 0.045 | 0.320 | 2.118 | 0.012 | 718.000 | 611.000
+M2|100|full | 0.010 | 0.045 | 0.552 | 2.834 | 0.015 | 718.000 | 611.000
+M2|100|scissor1px | 0.010 | 0.040 | 0.599 | 2.511 | 0.018 | 718.000 | 611.000
+M0|300|full | 0.000 | 0.078 | 0.898 | 13.207 | 0.015 | 2108.500 | 1802.500
+M0|300|scissor1px | 0.000 | 0.073 | 0.881 | 10.580 | 0.013 | 2109.000 | 1803.000
+M2|300|full | 0.015 | 0.070 | 1.469 | 10.651 | 0.016 | 2112.500 | 1806.500
+M2|300|scissor1px | 0.015 | 0.074 | 1.534 | 17.270 | 0.015 | 2112.500 | 1806.500

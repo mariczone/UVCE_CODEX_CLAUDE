@@ -1,0 +1,116 @@
+{
+  "kind": "uvce-stage-timing",
+  "date": "2026-10-09T07:49:50.428Z",
+  "glRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "chromiumArgs": [
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+    "--ignore-gpu-blocklist"
+  ],
+  "query": "&mips=0",
+  "compare": "3db7a20 (M0 build in a git worktree)",
+  "counts": [
+    100,
+    300
+  ],
+  "runs": 3,
+  "rows": [
+    {
+      "build": "current",
+      "count": 100,
+      "mode": "full",
+      "drawCalls": 718,
+      "visibleLayers": 611,
+      "pumpP50Ms": 0.025,
+      "worldP50Ms": 0.085,
+      "prepareP50Ms": 0.56,
+      "submitP50Ms": 3.408,
+      "rasterP50Ms": 162.592
+    },
+    {
+      "build": "current",
+      "count": 100,
+      "mode": "scissor1px",
+      "drawCalls": 718,
+      "visibleLayers": 611,
+      "pumpP50Ms": 0.02,
+      "worldP50Ms": 0.08,
+      "prepareP50Ms": 0.527,
+      "submitP50Ms": 3.228,
+      "rasterP50Ms": 50.433
+    },
+    {
+      "build": "3db7a20 (M0 build in a git worktree)",
+      "count": 100,
+      "mode": "full",
+      "drawCalls": 718,
+      "visibleLayers": 611,
+      "pumpP50Ms": 0,
+      "worldP50Ms": 0.083,
+      "prepareP50Ms": 0.592,
+      "submitP50Ms": 3.185,
+      "rasterP50Ms": 162.1
+    },
+    {
+      "build": "3db7a20 (M0 build in a git worktree)",
+      "count": 100,
+      "mode": "scissor1px",
+      "drawCalls": 718,
+      "visibleLayers": 611,
+      "pumpP50Ms": 0,
+      "worldP50Ms": 0.08,
+      "prepareP50Ms": 0.553,
+      "submitP50Ms": 2.92,
+      "rasterP50Ms": 48.685
+    },
+    {
+      "build": "current",
+      "count": 300,
+      "mode": "full",
+      "drawCalls": 2112,
+      "visibleLayers": 1806,
+      "pumpP50Ms": 0.02,
+      "worldP50Ms": 0.11,
+      "prepareP50Ms": 1.227,
+      "submitP50Ms": 12.222,
+      "rasterP50Ms": 181.055
+    },
+    {
+      "build": "current",
+      "count": 300,
+      "mode": "scissor1px",
+      "drawCalls": 2113,
+      "visibleLayers": 1807,
+      "pumpP50Ms": 0.02,
+      "worldP50Ms": 0.1,
+      "prepareP50Ms": 1.11,
+      "submitP50Ms": 10.248,
+      "rasterP50Ms": 61.685
+    },
+    {
+      "build": "3db7a20 (M0 build in a git worktree)",
+      "count": 300,
+      "mode": "full",
+      "drawCalls": 2108,
+      "visibleLayers": 1802,
+      "pumpP50Ms": 0,
+      "worldP50Ms": 0.11,
+      "prepareP50Ms": 1.34,
+      "submitP50Ms": 11.567,
+      "rasterP50Ms": 189.87
+    },
+    {
+      "build": "3db7a20 (M0 build in a git worktree)",
+      "count": 300,
+      "mode": "scissor1px",
+      "drawCalls": 2109,
+      "visibleLayers": 1803,
+      "pumpP50Ms": 0,
+      "worldP50Ms": 0.1,
+      "prepareP50Ms": 1.203,
+      "submitP50Ms": 8.948,
+      "rasterP50Ms": 64.192
+    }
+  ],
+  "note": "build label edited after the run: the local worktree path of the compared build was replaced by \"3db7a20 (M0 build in a git worktree)\""
+}

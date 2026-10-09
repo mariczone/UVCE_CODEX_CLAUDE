@@ -3,14 +3,19 @@
 Modular 2D RGBA sprite characters (body, head, hair, armor, hat, weapon) composed at runtime inside a
 three.js 2.5D scene: 8 camera-relative directions, idle/walk clips, socket-attached equipment that can be
 swapped live without any per-combination sprite sheet, and a CPU reference compositor that the WebGL output is
-tested against pixel by pixel. **Milestone 0 is implemented; the art is synthetic placeholder art.**
+tested against pixel by pixel. Source pages stream through a budgeted residency registry: grouped, mip-safe atlas
+pages, generation-checked handles, LRU eviction, retry/backoff, prefetch and WebGL context-loss recovery.
+**Milestones 0–2 are implemented (the hardware-GPU benchmark is still to be run); the art is synthetic placeholder
+art.**
 
 | Read | What |
 |---|---|
-| [`docs/UVCE_MILESTONE_0_REPORT.md`](docs/UVCE_MILESTONE_0_REPORT.md) | What was built, verified output, limitations, next milestones |
-| [`docs/UVCE_ARCHITECTURE_DECISIONS.md`](docs/UVCE_ARCHITECTURE_DECISIONS.md) | ADRs: coordinates, directions, sorting/depth, alpha, schemas, hashing |
+| [`docs/LOCAL_TEST_CHECKLIST.md`](docs/LOCAL_TEST_CHECKLIST.md) | **Run this on your own machine:** every test, the GPU benchmark and a manual browser pass, in one go |
+| [`docs/UVCE_MILESTONE_1_2_REPORT.md`](docs/UVCE_MILESTONE_1_2_REPORT.md) | Milestones 1–2: what was built, verified output, performance vs M0, limitations, next steps |
+| [`docs/UVCE_MILESTONE_0_REPORT.md`](docs/UVCE_MILESTONE_0_REPORT.md) | Milestone 0: what was built, verified output, limitations |
+| [`docs/UVCE_ARCHITECTURE_DECISIONS.md`](docs/UVCE_ARCHITECTURE_DECISIONS.md) | ADRs: coordinates, directions, sorting/depth, alpha and mips, schemas, hashing, residency |
 | [`docs/UVCE_REPO_AUDIT.md`](docs/UVCE_REPO_AUDIT.md) | What the repository contained before this work |
-| [`docs/benchmark-results/baseline/`](docs/benchmark-results/baseline/README.md) | Benchmark protocol and the first baseline run |
+| [`docs/benchmark-results/baseline/`](docs/benchmark-results/baseline/README.md) | Benchmark protocol, the M0 baseline and the M2 rerun with its attribution |
 | [`docs/screenshots/`](docs/screenshots/) | Real headless-Chromium screenshots |
 
 ## Usage
@@ -30,18 +35,22 @@ pnpm build                      # fixtures + assets + production build -> dist/
 pnpm test:e2e                   # build + Playwright: GPU-vs-CPU parity, swaps, crowds, directions
 pnpm screenshots                # real browser screenshots -> docs/screenshots/            (after pnpm build)
 pnpm bench:baseline             # baseline metrics -> docs/benchmark-results/baseline/<date>/ (after pnpm build)
+pnpm bench:stages               # per-stage frame timing (pump/world/prepare/submit/raster), optional A/B   (after pnpm build)
 pnpm fixtures:legacy:validate   # original starter-pack Python validator (needs Pillow)
 ```
 
 In the app: crowd size 1 / 2 (overlap) / 20 / 100 / 300, seed, play/pause, hero clip, 8 direction buttons
 (relative to the camera — orbit with the mouse and the displayed direction changes), hair/hat/armor/weapon
 selectors, per-layer toggles, debug overlay (pivots, sockets, layer boxes with draw order, painter rank), live
-CPU/draw-call stats and the per-item atlas page viewer.
+CPU/draw-call stats, residency counters (fetches, reloads, evictions, budget, stale-handle hits), the atlas page
+viewer with each page's state, and a "simulate GPU context loss (1 s)" button.
 
-URL parameters: `count=20`, `seed=42`, `dir=SE`, `clip=walk`, `t=350` (ms), `hat=hat_02` / `weapon=none`,
-`hide=weapon,hat`, `debug=1`, `test=1` (deterministic: paused clock, no MSAA), `scene=parity` / `scene=studio`
-(pixel-exact orthographic camera), `bench=1` (panel off, for measurements), `mode=SHADER` (falls back to LAYERED
-with the reason shown — only LAYERED is implemented).
+URL parameters: `count=20`, `seed=42`, `dir=SE`, `clip=walk`, `t=350` (ms), `paused=1`, `hat=hat_02` /
+`weapon=none`, `hide=weapon,hat`, `debug=1`, `test=1` (deterministic: paused clock, no MSAA), `scene=parity` /
+`scene=studio` (pixel-exact orthographic camera), `variant=crossing|arch|glass` (with `scene=parity`),
+`budgetMiB=1` (source page budget, default 256 — small values force evictions), `mips=0` (no mip chains, for A/B),
+`filter=nearest|linear`, `bench=1` (panel off, for measurements), `mode=SHADER` (falls back to LAYERED with the
+reason shown — only LAYERED is implemented).
 
 ---
 

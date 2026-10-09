@@ -36,7 +36,7 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
     `WebGPU: ${{ available: 'adapter available (not used; WebGL2 baseline, M5)', none: 'API exposed but no adapter', 'not-exposed': 'not exposed by this browser', error: 'adapter request failed', pending: 'probing…' }[app.env.webgpuAdapter]} · manifest ${index.manifest.manifestVersion}`;
   root.append(
     el('header', {}, [
-      el('h1', {}, ['UVCE POC · Milestone 0']),
+      el('h1', {}, ['UVCE POC · Milestones 0–2']),
       el('p', { class: 'muted' }, ['Modular RGBA sprite characters in a Three.js 2.5D scene. Synthetic placeholder art.']),
       el('p', { class: 'env', 'data-testid': 'env' }, [
         `WebGL2 · ${app.env.glRenderer}`,
@@ -133,7 +133,7 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
 
   // ---------- pages
   const pageList = el('div', { class: 'pages' });
-  root.append(section('Source pages (per-item atlases)', pageList));
+  root.append(section('Source pages (atlas groups, residency)', pageList));
   const thumbs = new Map<string, { canvas: HTMLCanvasElement; state: HTMLElement; drawn: boolean }>();
   for (const page of index.manifest.pages) {
     const scale = Math.min(1, 280 / page.width);
@@ -164,9 +164,11 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
     const handle = app.registry.handleFor(pageId);
     const tex = handle ? app.registry.resolve(handle) : null;
     if (!t) return;
+    // State and counters from the same snapshot, so one card never mixes two moments.
     const status = statuses.get(pageId);
-    t.state.textContent = `${app.registry.pageState(pageId)}${status ? ` · refs ${status.refs} · fetched ${status.fetches}× · evicted ${status.evictions}×` : ''}`;
-    t.state.className = `state ${app.registry.pageState(pageId).toLowerCase()}`;
+    const state = status?.state ?? app.registry.pageState(pageId);
+    t.state.textContent = `${state}${status ? ` · refs ${status.refs} · fetched ${status.fetches}× · evicted ${status.evictions}×` : ''}`;
+    t.state.className = `state ${state.toLowerCase()}`;
     const ctx = t.canvas.getContext('2d');
     if (!ctx) return;
     const page = index.pages.get(pageId);

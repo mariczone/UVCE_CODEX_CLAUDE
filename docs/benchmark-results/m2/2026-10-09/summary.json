@@ -1,0 +1,277 @@
+{
+  "kind": "uvce-baseline-benchmark",
+  "renderMode": "LAYERED",
+  "date": "2026-10-09T07:13:45.909Z",
+  "commit": "2836d80714cc7f705e7ea2001f1c3397f8032137",
+  "workingTree": "clean",
+  "protocol": {
+    "counts": [
+      1,
+      20,
+      100,
+      300
+    ],
+    "runs": 3,
+    "warmupMs": 2000,
+    "measureMs": 15000,
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "seed": 20261009,
+    "extraQuery": "",
+    "chromiumArgs": [
+      "--use-angle=swiftshader",
+      "--enable-unsafe-swiftshader",
+      "--ignore-gpu-blocklist"
+    ],
+    "scene": "stage scene, perspective camera framed per count, animation playing, MSAA on, overlay and side panel off (bench=1, canvas = full viewport)",
+    "aggregation": "per run: nearest-rank percentiles over all frames in the window; reported: median across runs"
+  },
+  "environment": {
+    "browser": "Chromium 141.0.7390.37",
+    "glVersion": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "glRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "glVendor": "Google Inc. (Google)",
+    "maxTextureSize": 8192,
+    "timerQuery": true,
+    "webgpuExposed": true,
+    "webgpuAdapter": "none",
+    "devicePixelRatio": 1,
+    "pixelRatioUsed": 1,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.7390.37 Safari/537.36",
+    "hardwareConcurrency": 4,
+    "crossOriginIsolated": true,
+    "os": "linux 6.18.44-fc-v80",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz x4",
+    "memoryGiB": 15.7,
+    "node": "v22.22.0"
+  },
+  "assets": {
+    "manifestVersion": "m-a0bb3a7620c3dba0",
+    "stats": {
+      "sourceFrames": 330,
+      "uniqueImages": 200,
+      "dedupedFrames": 130,
+      "pageCount": 12,
+      "pageBytesRGBA8": 6356992,
+      "pageBytesWithMips": 8475456,
+      "pageFileBytes": 347458,
+      "crossGroupSharedImages": 0
+    }
+  },
+  "scenarios": [
+    {
+      "count": 1,
+      "runs": 3,
+      "visibleCharacters": 1,
+      "visibleLayers": 8,
+      "uniqueAppearances": 1,
+      "drawCalls": 16,
+      "triangles": 250,
+      "samplesPerRun": [
+        131,
+        134,
+        125
+      ],
+      "cpuUpdateMs": {
+        "p50": 0.195,
+        "p95": 0.325,
+        "p99": 1.07
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 0.37,
+        "p95": 0.995,
+        "p99": 4.815
+      },
+      "cpuTotalMs": {
+        "p50": 0.56,
+        "p95": 1.6,
+        "p99": 5.3
+      },
+      "rafIntervalMs": {
+        "p50": 116.66,
+        "p95": 199.99
+      },
+      "gpuTimerQueryMs": {
+        "p50": 84.566,
+        "p95": 111.974,
+        "samplesPerRun": [
+          31,
+          31,
+          30
+        ]
+      },
+      "residentPages": 5,
+      "pageLoads": 5,
+      "sourceRGBA8MiB": 4.656,
+      "residentGpuEstimateMiB": 6.208,
+      "assetRequests": 6,
+      "pageRequests": 5,
+      "downloadedAssetKiB": 272.897,
+      "timeToReadyMs": 322
+    },
+    {
+      "count": 20,
+      "runs": 3,
+      "visibleCharacters": 20,
+      "visibleLayers": 123,
+      "uniqueAppearances": 17,
+      "drawCalls": 150,
+      "triangles": 936,
+      "samplesPerRun": [
+        119,
+        113,
+        119
+      ],
+      "cpuUpdateMs": {
+        "p50": 0.37,
+        "p95": 0.61,
+        "p99": 1.39
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 0.865,
+        "p95": 3.14,
+        "p99": 5.315
+      },
+      "cpuTotalMs": {
+        "p50": 1.25,
+        "p95": 3.5,
+        "p99": 5.735
+      },
+      "rafIntervalMs": {
+        "p50": 116.665,
+        "p95": 216.66
+      },
+      "gpuTimerQueryMs": {
+        "p50": 94.46,
+        "p95": 119.545,
+        "samplesPerRun": [
+          28,
+          25,
+          30
+        ]
+      },
+      "residentPages": 12,
+      "pageLoads": 12,
+      "sourceRGBA8MiB": 6.063,
+      "residentGpuEstimateMiB": 8.083,
+      "assetRequests": 13,
+      "pageRequests": 12,
+      "downloadedAssetKiB": 356.371,
+      "timeToReadyMs": 382
+    },
+    {
+      "count": 100,
+      "runs": 3,
+      "visibleCharacters": 100,
+      "visibleLayers": 607,
+      "uniqueAppearances": 75,
+      "drawCalls": 714,
+      "triangles": 3824,
+      "samplesPerRun": [
+        93,
+        97,
+        93
+      ],
+      "cpuUpdateMs": {
+        "p50": 1.005,
+        "p95": 1.46,
+        "p99": 1.765
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 3.08,
+        "p95": 6.975,
+        "p99": 9.685
+      },
+      "cpuTotalMs": {
+        "p50": 4.16,
+        "p95": 7.755,
+        "p99": 11.06
+      },
+      "rafIntervalMs": {
+        "p50": 149.995,
+        "p95": 299.99
+      },
+      "gpuTimerQueryMs": {
+        "p50": 124.597,
+        "p95": 142.481,
+        "samplesPerRun": [
+          21,
+          25,
+          21
+        ]
+      },
+      "residentPages": 12,
+      "pageLoads": 12,
+      "sourceRGBA8MiB": 6.063,
+      "residentGpuEstimateMiB": 8.083,
+      "assetRequests": 13,
+      "pageRequests": 12,
+      "downloadedAssetKiB": 356.371,
+      "timeToReadyMs": 469
+    },
+    {
+      "count": 300,
+      "runs": 3,
+      "visibleCharacters": 300,
+      "visibleLayers": 1804,
+      "uniqueAppearances": 149,
+      "drawCalls": 2110,
+      "triangles": 10994,
+      "samplesPerRun": [
+        72,
+        72,
+        74
+      ],
+      "cpuUpdateMs": {
+        "p50": 2.69,
+        "p95": 5.295,
+        "p99": 8.03
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 10.005,
+        "p95": 17.27,
+        "p99": 26.205
+      },
+      "cpuTotalMs": {
+        "p50": 12.79,
+        "p95": 20.435,
+        "p99": 29.215
+      },
+      "rafIntervalMs": {
+        "p50": 199.99,
+        "p95": 399.985
+      },
+      "gpuTimerQueryMs": {
+        "p50": 158.381,
+        "p95": 187.024,
+        "samplesPerRun": [
+          16,
+          16,
+          16
+        ]
+      },
+      "residentPages": 12,
+      "pageLoads": 12,
+      "sourceRGBA8MiB": 6.063,
+      "residentGpuEstimateMiB": 8.083,
+      "assetRequests": 13,
+      "pageRequests": 12,
+      "downloadedAssetKiB": 356.371,
+      "timeToReadyMs": 693
+    }
+  ],
+  "caveats": [
+    "Rendered with ANGLE/SwiftShader (CPU software rasterizer) in a headless container: rAF interval and GPU-timer values measure software rasterisation, NOT a GPU. No FPS claim is made.",
+    "CPU update = character prepare (resolve/cull/sort) + world update; CPU submit = three.js render() call on the main thread (command encoding, not GPU execution).",
+    "CPU submit can include command-buffer back-pressure when the (software) GPU process falls behind.",
+    "Draw calls include world props and one ground-shadow decal per visible character.",
+    "Byte figures are owner-calculated estimates, not measured VRAM: sourceRGBA8MiB = level 0 of resident pages; residentGpuEstimateMiB includes mip chains."
+  ]
+}

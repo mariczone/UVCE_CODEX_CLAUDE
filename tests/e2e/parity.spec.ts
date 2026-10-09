@@ -11,6 +11,12 @@ import { buildParityExpected, parityPaintOrder } from '../support/parity-expecte
 import { api, openApp } from './helpers.ts';
 
 const TOLERANCE = 3; // 8-bit units per channel: premultiply-on-upload + blend rounding (observed max 2 on SwiftShader)
+
+/** One evidence line per parity case in the test output (quoted by the milestone reports). */
+function logParity(name: string, actual: RgbaImage, expected: RgbaImage, diff: { mismatched: number; maxChannelDelta: number }): void {
+  const notExact = diffImages(actual, expected, 0).mismatched;
+  console.log(`[parity] ${name}: beyond ±${TOLERANCE} ${diff.mismatched}, max delta ${diff.maxChannelDelta}, not bit-exact ${notExact} of ${actual.width * actual.height} px`);
+}
 const CASES = [
   { direction: 'SE', clipId: 'idle', timeMs: 0 },
   { direction: 'S', clipId: 'idle', timeMs: 480 },
@@ -37,6 +43,7 @@ test.describe('GPU vs CPU reference parity', () => {
       const actual = await capture(page, `scene=parity&test=1&dir=${c.direction}&clip=${c.clipId}&t=${c.timeMs}`);
       const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, direction: c.direction, clipId: c.clipId, timeMs: c.timeMs, pixelsPerUnit: 128 });
       const diff = diffImages(actual, expected, TOLERANCE);
+      logParity(`${c.direction} ${c.clipId} t=${c.timeMs}`, actual, expected, diff);
       if (diff.mismatched > 0) await saveArtifacts(`${c.direction}-${c.clipId}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
       expect([actual.width, actual.height]).toEqual([1280, 720]);
       expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
@@ -49,12 +56,14 @@ test.describe('GPU vs CPU reference parity', () => {
     const expected = buildParityExpected(assets, opts);
     // 1) Hiding the hat layer must produce many mismatches against the full expectation.
     const noHat = await capture(page, 'scene=parity&test=1&dir=SE&hide=hat');
-    expect(diffImages(noHat, expected, TOLERANCE).mismatched).toBeGreaterThan(500);
+    const hatMissing = diffImages(noHat, expected, TOLERANCE).mismatched;
+    expect(hatMissing).toBeGreaterThan(500);
     // 2) The box really occludes the back character: an expectation that ignores depth (box drawn first)
     //    differs from the correct one, and the GPU output matches only the correct one.
     const actual = await capture(page, 'scene=parity&test=1&dir=SE');
     const noDepth = buildParityExpected(assets, { ...opts, drawFirst: ['box'] });
     const occluded = diffImages(noDepth, expected, TOLERANCE).mismatched;
+    console.log(`[parity] negative controls: hat hidden ${hatMissing} px differ, depth ignored ${occluded} px differ`);
     expect(occluded).toBeGreaterThan(800);
     expect(diffImages(actual, noDepth, TOLERANCE).mismatched).toBeGreaterThan(occluded * 0.95);
     expect(diffImages(actual, expected, TOLERANCE).mismatched).toBe(0);
@@ -74,6 +83,7 @@ test.describe('GPU vs CPU reference parity', () => {
       expect(await api(page, (u) => u.paintOrder())).toEqual(c.order);
       const expected = buildParityExpected(assets, { width: actual.width, height: actual.height, variant: c.variant, direction: 'SE', clipId: 'idle', timeMs: c.timeMs, pixelsPerUnit: 128 });
       const diff = diffImages(actual, expected, TOLERANCE);
+      logParity(`variant ${c.variant} t=${c.timeMs}`, actual, expected, diff);
       if (diff.mismatched > 0) await saveArtifacts(`${c.variant}-${c.timeMs}`, { actual, expected, heatmap: diff.heatmap });
       expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
     });
@@ -87,10 +97,13 @@ test.describe('GPU vs CPU reference parity', () => {
     expect(parityPaintOrder('crossing', 2000).map((e) => e.id)).toEqual(['wall', 'npc-static', 'hero']);
     const late = await capture(page, 'scene=parity&variant=crossing&test=1&t=2000');
     const stale = buildParityExpected(assets, { ...base, variant: 'crossing', timeMs: 2000, drawFirst: ['hero'] });
-    expect(diffImages(late, stale, TOLERANCE).mismatched).toBeGreaterThan(300);
+    const staleOrder = diffImages(late, stale, TOLERANCE).mismatched;
+    expect(staleOrder).toBeGreaterThan(300);
     // Glass: drawing it before all sprites (what three.js does for an unsorted transparent mesh) differs.
     const glass = await capture(page, 'scene=parity&variant=glass&test=1&dir=SE');
     const unsorted = buildParityExpected(assets, { ...base, variant: 'glass', timeMs: 0, drawFirst: ['glass'] });
-    expect(diffImages(glass, unsorted, TOLERANCE).mismatched).toBeGreaterThan(300);
+    const unsortedGlass = diffImages(glass, unsorted, TOLERANCE).mismatched;
+    console.log(`[parity] variant negative controls: stale crossing order ${staleOrder} px differ, unsorted glass ${unsortedGlass} px differ`);
+    expect(unsortedGlass).toBeGreaterThan(300);
   });
 });

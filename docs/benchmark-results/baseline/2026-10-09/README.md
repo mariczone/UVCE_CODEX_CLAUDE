@@ -6,6 +6,9 @@
 - **Host:** Linux container, Intel Xeon @ 2.10 GHz × 4 cores, 15.7 GiB RAM, no GPU · Node 22.22.0
 - **Protocol:** see [`../README.md`](../README.md) (1920x1080, DPR 1, 2 s warmup, 15 s window, 3 runs, medians)
 - Raw data: [`summary.json`](summary.json), [`summary.csv`](summary.csv); screenshots `scene-<count>.png`.
+- **Later note:** this exact build re-measured 18–33 % slower in a later session on the same container type (machine
+  drift). Use these numbers only for comparisons made in this run; the M2 comparison uses a same-session M0
+  control instead: [`../../m2/2026-10-09/`](../../m2/2026-10-09/README.md).
 
 ## Main-thread CPU cost per frame (milliseconds, median of 3 runs)
 

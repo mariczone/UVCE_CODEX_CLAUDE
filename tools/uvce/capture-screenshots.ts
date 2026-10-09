@@ -61,12 +61,14 @@ try {
     await save(name, await page.screenshot());
   }
 
-  // Atlas page viewer (side panel) after equipping a second hat: shows per-item pages + residency state.
+  // Atlas page viewer (side panel) after equipping a second hat: shows the pages + residency state.
   // The panel scrolls internally, so use a viewport tall enough to lay the whole section out unclipped.
   const tall = await browser.newPage({ viewport: { width: VIEW.width, height: 4200 }, deviceScaleFactor: 1 });
   await open(tall, server.url, 'test=1');
   await tall.getByTestId('slot-hat').selectOption('hat_02');
-  await tall.waitForTimeout(900);
+  // Wait until the swap is resident, then for at least one panel refresh (every ~450 ms) to show it.
+  await tall.evaluate(() => (window as unknown as { __UVCE__: { waitForIdle(): Promise<void> } }).__UVCE__.waitForIdle());
+  await tall.waitForTimeout(1000);
   await save('app-panel-source-pages.png', await tall.locator('section', { hasText: 'Source pages' }).screenshot());
   await tall.close();
 
