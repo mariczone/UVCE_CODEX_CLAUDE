@@ -147,6 +147,14 @@ try {
       pageRequests: pick((r) => r.transfer.pageRequests),
       downloadedAssetKiB: pick((r) => r.transfer.encodedBytes / 1024),
       timeToReadyMs: pick((r) => r.readyMs),
+      // Render-mode state at the end of the window (last frame; FULL_CACHE fields are 0 / null in other modes).
+      renderMode: perRun[0]?.snap.character.mode ?? null,
+      compositedCharacters: pick((r) => r.snap.character.compositedCharacters),
+      cachedCharacters: pick((r) => r.snap.character.cachedCharacters),
+      cacheHitRatio: perRun.every((r) => r.snap.character.cacheHitRatio !== null) ? pick((r) => r.snap.character.cacheHitRatio as number) : null,
+      frameCacheBakesLastFrame: pick((r) => r.snap.character.frameCacheBakes),
+      frameCachePauses: pick((r) => r.snap.character.frameCachePauses),
+      frameCacheMiB: pick((r) => r.snap.character.compositeEstimatedBytes / 1048576),
     });
   }
   const summary = {
