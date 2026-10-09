@@ -220,7 +220,7 @@ export class RenderPlanner {
 
   stats(): PlannerStats {
     let cachedGroups = 0;
-    for (const g of this.groups.values()) if (g.cached) cachedGroups++;
+    if (this.promotions > this.demotions) for (const g of this.groups.values()) if (g.cached) cachedGroups++; // nothing cached => no walk
     return {
       groups: this.groups.size,
       cachedGroups,

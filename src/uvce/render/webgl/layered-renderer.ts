@@ -792,6 +792,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       }
     }
     const lookups = cacheCounters.hits + cacheCounters.misses;
+    const plannerStats = this.planner?.stats(); // once per frame: it walks every group
     const reg = this.registry.stats();
     this.metrics = {
       ...this.emptyMetrics(),
@@ -811,9 +812,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       frameCachePaused: (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') && this.frame < this.cachePausedUntil,
       frameCachePauses: this.cachePauses,
       cacheHitRatio: (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') && lookups > 0 ? cacheCounters.hits / lookups : null,
-      plannerCachedGroups: this.planner?.stats().cachedGroups ?? 0,
-      plannerGroups: this.planner?.stats().groups ?? 0,
-      plannerSwitches: (this.planner?.stats().promotions ?? 0) + (this.planner?.stats().demotions ?? 0),
+      plannerCachedGroups: plannerStats?.cachedGroups ?? 0,
+      plannerGroups: plannerStats?.groups ?? 0,
+      plannerSwitches: (plannerStats?.promotions ?? 0) + (plannerStats?.demotions ?? 0),
       compositeEstimatedBytes: (this.frameCache?.allocator.pages ?? 0) * (this.frameCache?.bytesPerPage ?? 0),
       sourceEstimatedBytes: reg.residentBytes,
       pendingDownloads: reg.byState.REQUESTED + reg.byState.FETCHING + reg.byState.RETRY_BACKOFF,
