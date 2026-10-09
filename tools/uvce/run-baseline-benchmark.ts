@@ -27,6 +27,7 @@ interface Snapshot {
   renderSubmitCpu: Summary;
   totalCpu: Summary;
   gpuTimer: Summary;
+  poseUpdates?: Summary;
   drawCalls: number;
   triangles: number;
   textures: number;
@@ -155,6 +156,9 @@ try {
       frameCacheBakesLastFrame: pick((r) => r.snap.character.frameCacheBakes),
       frameCachePauses: pick((r) => r.snap.character.frameCachePauses),
       frameCacheMiB: pick((r) => r.snap.character.compositeEstimatedBytes / 1048576),
+      // Milestone 4: pose re-resolutions per frame over the window, and the LOD level split of the last frame.
+      poseUpdatesPerFrame: perRun.every((r) => r.snap.poseUpdates) ? { mean: pick((r) => (r.snap.poseUpdates as Summary).mean), p95: pick((r) => (r.snap.poseUpdates as Summary).p95) } : null,
+      lodLevels: perRun.at(-1)?.snap.character.lodLevels ?? null,
     });
   }
   const summary = {

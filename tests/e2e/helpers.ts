@@ -9,7 +9,7 @@ export interface UvceTestApi {
     drawCalls: number;
     triangles: number;
     count: number;
-    character: { visibleCharacters: number; visibleLayers: number; pendingLayers: number; failedLayers: number; uniqueVisibleAppearances: number; staleBindings: number; compositedCharacters: number; cachedCharacters: number; frameCacheBakes: number; frameCacheEvictions: number; frameCachePaused: boolean; frameCachePauses: number; cacheHitRatio: number | null; plannerCachedGroups: number; plannerGroups: number; plannerSwitches: number };
+    character: { visibleCharacters: number; visibleLayers: number; pendingLayers: number; failedLayers: number; uniqueVisibleAppearances: number; staleBindings: number; compositedCharacters: number; cachedCharacters: number; frameCacheBakes: number; frameCacheEvictions: number; frameCachePaused: boolean; frameCachePauses: number; cacheHitRatio: number | null; plannerCachedGroups: number; plannerGroups: number; plannerSwitches: number; lodEnabled: boolean; lodLevels: number[]; animationDeferred: number };
     registry: RegistryStatsView;
   };
   setCount(n: number): void;

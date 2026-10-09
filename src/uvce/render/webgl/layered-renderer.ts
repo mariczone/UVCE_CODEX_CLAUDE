@@ -22,6 +22,7 @@ import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
 import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, layerUvRect, setCompositeLayers } from './composite-material.ts';
 import { type BakeJob, type CacheCell, CANVAS_SIZE, CELL_OFFSET, type FrameCacheBackend } from './frame-cache.ts';
+import { AnimationBudget, DEFAULT_LOD_POLICY, type LodPolicy, lodLevelFor, lodPhaseMs, throttledTimeMs } from '../lod.ts';
 import { type PlannerDecision, type PlannerGroupRef, RenderPlanner } from '../planner.ts';
 import { createMissingTexture, createSpriteLayerMaterial, createUnitQuadGeometry } from './sprite-material.ts';
 
@@ -45,6 +46,13 @@ export interface LayeredRendererOptions {
   frameCache?: FrameCacheBackend | null;
   /** FULL_CACHE: at most this many frames are baked per frame (bounds bake hitches); the rest fall back. */
   bakeBudget?: number;
+  /**
+   * Milestone 4 projected-size LOD (null/absent = off): small characters sample their clip at a lower visual rate,
+   * and `animationBudget` caps animation-only pose updates per frame below the finest level. Simulation untouched.
+   */
+  lod?: { policy?: LodPolicy; animationBudget?: number | null } | null;
+  /** Viewport height in CSS px for projected-size LOD (setViewportHeight updates it). */
+  viewportHeightPx?: number;
 }
 
 /** SHADER-mode quad of one character: all visible layers sampled and composited in one draw. */
@@ -104,6 +112,8 @@ export interface CharacterDebugInfo {
   rank: number;
   visible: boolean;
   position: THREE.Vector3;
+  /** Projected-size LOD level (index into the policy; -1 = LOD off or not assessed yet). */
+  lodLevel: number;
 }
 
 interface CharacterRecord extends Rankable {
@@ -140,6 +150,13 @@ interface CharacterRecord extends Rankable {
   pinned: readonly string[];
   /** Items prefetched since the character was culled: one prefetch per culling, not one per frame. */
   prefetched: readonly string[] | null;
+  /** LOD: current level (-1 = not assessed), stagger phase, frame shown, consecutive budget deferrals. */
+  lodLevel: number;
+  lodPhaseMs: number;
+  shownFrame: number;
+  deferFrames: number;
+  /** Pose key without the animation frame: equal => only the frame would change (budget-eligible). */
+  poseBase: string;
 }
 
 const SHADOW_RADIUS = 0.36;
@@ -209,6 +226,12 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   private readonly projScreen = new THREE.Matrix4();
   private readonly sphere = new THREE.Sphere(new THREE.Vector3(), 1.3);
   private readonly tmp = new THREE.Vector3();
+  private readonly tmpTop = new THREE.Vector3();
+  private readonly lodPolicy: LodPolicy | null;
+  private readonly animationBudget: AnimationBudget | null;
+  private viewportHeightPx: number;
+  /** World height of the rig canvas (projected-size LOD measures the canvas, see render/lod.ts). */
+  private readonly canvasWorldHeight: number;
   private metrics: CharacterRenderMetrics;
 
   constructor(options: LayeredRendererOptions) {
@@ -224,6 +247,11 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     this.planner = this.mode === 'AUTO' && this.frameCache ? new RenderPlanner({ capacityCells: this.frameCache.allocator.capacityCells }) : null;
     this.bakeBudget = options.bakeBudget ?? 24;
     this.pixelsPerUnit = this.index.manifest.rigs[0]?.pixelsPerWorldUnit ?? 128;
+    this.canvasWorldHeight = (this.index.manifest.rigs[0]?.canonicalCanvas.height ?? 256) / this.pixelsPerUnit;
+    this.lodPolicy = options.lod ? (options.lod.policy ?? DEFAULT_LOD_POLICY) : null;
+    const budget = options.lod?.animationBudget;
+    this.animationBudget = this.lodPolicy && budget !== undefined && budget !== null ? new AnimationBudget(budget) : null;
+    this.viewportHeightPx = options.viewportHeightPx ?? 720;
     this.root.name = 'uvce-characters';
     this.shadowRoot.name = 'uvce-shadows';
     // Shadows are ground decals: drawn after opaque world, before every character.
@@ -265,6 +293,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       plannerCachedGroups: 0,
       plannerGroups: 0,
       plannerSwitches: 0,
+      lodEnabled: false,
+      lodLevels: [0, 0, 0, 0],
+      animationDeferred: 0,
     };
   }
 
@@ -355,6 +386,11 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       rank: 0,
       pinned: NO_ITEMS,
       prefetched: null,
+      lodLevel: -1,
+      lodPhaseMs: lodPhaseMs(entityId),
+      shownFrame: -1,
+      deferFrames: 0,
+      poseBase: '',
     };
     this.records.set(entityId, rec);
     return rec;
@@ -608,6 +644,18 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
   }
 
   /** AUTO: latest GPU-pressure reading; the planner only promotes groups to the frame cache under pressure. */
+  /** Projected-size LOD needs the viewport height in CSS px (call on resize). */
+  setViewportHeight(px: number): void {
+    this.viewportHeightPx = Math.max(1, px);
+  }
+
+  /** Projected height in CSS px of a character's rig canvas standing at `p` (uses the matrix of the last prepareFrame). */
+  projectedHeightPx(p: { x: number; y: number; z: number }): number {
+    const footY = this.tmp.set(p.x, p.y, p.z).applyMatrix4(this.projScreen).y;
+    const topY = this.tmpTop.set(p.x, p.y + this.canvasWorldHeight, p.z).applyMatrix4(this.projScreen).y;
+    return (Math.abs(topY - footY) / 2) * this.viewportHeightPx;
+  }
+
   setGpuPressure(pressure: boolean): void {
     this.planner?.setPressure(pressure);
   }
@@ -649,6 +697,8 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     this.frameCache?.allocator.beginFrame(this.frame);
     this.planner?.beginFrame(this.frame);
     this.bakeJobs = [];
+    this.animationBudget?.beginFrame();
+    const lodLevels = [0, 0, 0, 0];
     const appearances = new Set<string>();
     for (const c of characters) {
       const rec = this.records.get(c.entityId) ?? this.createRecord(c.entityId);
@@ -685,11 +735,29 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       rec.prefetched = null;
       const direction = spriteDirection(c.facingYaw, viewYawForCharacter(viewer, c.position));
       const clip = this.index.clips.get(c.animation.clipId);
-      const frameIndex = clip ? sampleClip(clip, clipTimeAt(c.animation, nowMs)).frameIndex : 0;
+      let animMs = nowMs;
+      if (this.lodPolicy) {
+        rec.lodLevel = lodLevelFor(this.projectedHeightPx(c.position), rec.lodLevel, this.lodPolicy);
+        animMs = throttledTimeMs(nowMs, this.lodPolicy.levels[rec.lodLevel]?.animationHz ?? null, rec.lodPhaseMs);
+        const bucket = Math.min(rec.lodLevel, lodLevels.length - 1);
+        lodLevels[bucket] = (lodLevels[bucket] as number) + 1;
+      }
+      let frameIndex = clip ? sampleClip(clip, clipTimeAt(c.animation, animMs)).frameIndex : 0;
       // The registry revision changes on every residency change (upload, eviction, failure, context loss), so a
       // pose bound under the current revision has valid handles and up-to-date pending/failed counts.
-      const key = `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}|${this.registry.revision}`;
+      const base = `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${this.hiddenRevision}|${this.registry.revision}`;
+      if (this.animationBudget && rec.lodLevel > 0 && base === rec.poseBase && frameIndex !== rec.shownFrame) {
+        // Animation-only change of a non-HIGH character: may wait (bounded) when this frame's budget is spent.
+        if (this.animationBudget.admit(rec.deferFrames)) rec.deferFrames = 0;
+        else {
+          rec.deferFrames++;
+          frameIndex = rec.shownFrame;
+        }
+      }
+      const key = `${base}|${frameIndex}`;
       if (key !== rec.poseKey) {
+        rec.poseBase = base;
+        rec.shownFrame = frameIndex;
         rec.pose = resolvePose(this.index, rec.resolved, { clipId: c.animation.clipId, direction, frameIndex, hiddenLayers: this.hiddenLayers });
         rec.poseKey = key;
         rec.frameKey = `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}`;
@@ -800,6 +868,9 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       failedLayers: failed,
       uniqueVisibleAppearances: appearances.size,
       poseUpdates,
+      lodEnabled: this.lodPolicy !== null,
+      lodLevels,
+      animationDeferred: this.animationBudget?.deferred ?? 0,
       prepareCpuMs: performance.now() - t0,
       staleBindings,
       compositedCharacters: composites,
@@ -837,6 +908,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       rank: rec.rank,
       visible: rec.group.visible,
       position: rec.group.position.clone(),
+      lodLevel: rec.lodLevel,
     };
   }
 

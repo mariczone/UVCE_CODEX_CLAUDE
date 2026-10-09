@@ -4,12 +4,13 @@ import { type PageFetcher, PageFetchError, type PageUploader, type RegistryOptio
 import { companionAppearance, heroAppearance } from '../../src/uvce/bench/crowd.ts';
 import { withSlot } from '../../src/uvce/core/appearance-resolver.ts';
 import type { CharacterInstance } from '../../src/uvce/render/contracts.ts';
-import { LayeredCharacterRenderer } from '../../src/uvce/render/webgl/layered-renderer.ts';
+import { DEFAULT_LOD_POLICY, type LodPolicy } from '../../src/uvce/render/lod.ts';
+import { LayeredCharacterRenderer, type LayeredRendererOptions } from '../../src/uvce/render/webgl/layered-renderer.ts';
 import type { ManifestIndex } from '../../src/uvce/schema/compiled-manifest.ts';
 import { compiledAssets } from './helpers.ts';
 
 /** Real registry with instant fake network/GPU ports; counts every pin/prefetch call the renderer makes. */
-function setup(index: ManifestIndex, options: Partial<RegistryOptions> = {}, extra: { mode?: 'LAYERED' | 'SHADER'; failPage?: string } = {}) {
+function setup(index: ManifestIndex, options: Partial<RegistryOptions> = {}, extra: { mode?: 'LAYERED' | 'SHADER'; failPage?: string; lod?: LayeredRendererOptions['lod'] } = {}) {
   const fetchLog: string[] = [];
   const fetcher: PageFetcher<string> = {
     fetch: (page) => {
@@ -37,7 +38,7 @@ function setup(index: ManifestIndex, options: Partial<RegistryOptions> = {}, ext
   const camera = new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 120);
   camera.position.set(0, 3, 6);
   camera.lookAt(0, 0.8, 0);
-  const renderer = new LayeredCharacterRenderer({ index, registry, scene: new THREE.Scene(), camera, shadows: false, mode: extra.mode });
+  const renderer = new LayeredCharacterRenderer({ index, registry, scene: new THREE.Scene(), camera, shadows: false, mode: extra.mode, lod: extra.lod });
   let frame = 0;
   return {
     registry,
@@ -204,5 +205,98 @@ describe('SHADER render mode (one composited quad per character)', () => {
     expect(t.renderer.getMetrics().pendingLayers).toBe(1);
     expect(t.renderer.getMetrics().staleBindings).toBe(0);
     expect(t.renderer.auditBindings().violations).toBe(0);
+  });
+});
+
+describe('projected-size LOD (Milestone 4)', () => {
+  /** HIGH above 300 px, otherwise TINY at 2 Hz: makes the rate difference obvious at 50 ms test frames. */
+  const POLICY: LodPolicy = { levels: [{ name: 'HIGH', minHeightPx: 300, animationHz: null }, { name: 'TINY', minHeightPx: 0, animationHz: 2 }], hysteresis: 0.1 };
+  const far = (id: string, x: number): CharacterInstance => ({ ...character(id, x), position: { x, y: 0, z: -10 } });
+
+  it('small characters animate at the lower visual rate, frames stay in clip order; the near hero is untouched', async () => {
+    const { index } = await compiledAssets();
+    const t = setup(index, {}, { lod: { policy: POLICY } });
+    const hero = character('hero', 0);
+    const npc = far('npc', 0.5);
+    await t.frame([hero, npc], 6);
+    expect(t.renderer.debugInfo('hero')?.lodLevel).toBe(0);
+    expect(t.renderer.debugInfo('npc')?.lodLevel).toBe(1);
+    const changes = { hero: 0, npc: 0 };
+    const last = { hero: -1, npc: -1 };
+    for (let i = 0; i < 60; i++) {
+      await t.frame([hero, npc]);
+      for (const id of ['hero', 'npc'] as const) {
+        const f = t.renderer.debugInfo(id)?.pose?.frameIndex ?? -1;
+        if (f !== last[id]) {
+          // walk has 8 frames of 100 ms: 2 Hz shows every 5th frame; never backwards (mod 8)
+          if (last[id] >= 0) expect((f - last[id] + 8) % 8, id).toBeLessThanOrEqual(id === 'hero' ? 1 : 5);
+          changes[id]++;
+          last[id] = f;
+        }
+      }
+    }
+    expect(changes.hero).toBeGreaterThanOrEqual(25); // 3 s of a 10 fps walk cycle
+    expect(changes.npc).toBeGreaterThanOrEqual(5);
+    expect(changes.npc).toBeLessThanOrEqual(7); // 2 Hz over 3 s
+    const m = t.renderer.getMetrics();
+    expect(m.lodEnabled).toBe(true);
+    expect(m.lodLevels).toEqual([1, 1, 0, 0]);
+    expect(t.renderer.auditBindings().violations).toBe(0);
+  });
+
+  it('LOD off (default): no levels, every frame sampled', async () => {
+    const { index } = await compiledAssets();
+    const t = setup(index);
+    await t.frame([far('npc', 0)], 3);
+    expect(t.renderer.debugInfo('npc')?.lodLevel).toBe(-1);
+    expect(t.renderer.getMetrics().lodLevels).toEqual([0, 0, 0, 0]);
+  });
+
+  it('the animation budget defers animation-only updates (bounded) but never appearance changes or the HIGH hero', async () => {
+    const { index } = await compiledAssets();
+    const t = setup(index, {}, { lod: { policy: { ...POLICY, levels: [POLICY.levels[0] as LodPolicy['levels'][number], { name: 'TINY', minHeightPx: 0, animationHz: null }] }, animationBudget: 2 } });
+    const hero = character('hero', 0);
+    const npcs = Array.from({ length: 12 }, (_, i) => far(`npc-${i}`, -3 + i * 0.5));
+    await t.frame([hero, ...npcs], 6);
+    const shown = new Map<string, number>();
+    const stale = new Map<string, number>();
+    let deferred = 0;
+    let heroChanges = 0;
+    for (let i = 0; i < 40; i++) {
+      const heroBefore = t.renderer.debugInfo('hero')?.pose?.frameIndex;
+      await t.frame([hero, ...npcs]);
+      if (t.renderer.debugInfo('hero')?.pose?.frameIndex !== heroBefore) heroChanges++;
+      deferred += t.renderer.getMetrics().animationDeferred;
+      for (const n of npcs) {
+        const f = t.renderer.debugInfo(n.entityId)?.pose?.frameIndex ?? -1;
+        stale.set(n.entityId, f === shown.get(n.entityId) ? (stale.get(n.entityId) ?? 0) + 1 : 0);
+        shown.set(n.entityId, f);
+        // 100 ms frames at 50 ms steps change every 2nd step; with up to 3 deferrals a frame is held <= 2 + 3 steps
+        expect(stale.get(n.entityId), n.entityId).toBeLessThanOrEqual(5);
+      }
+    }
+    expect(deferred).toBeGreaterThan(0);
+    expect(heroChanges).toBeGreaterThanOrEqual(19);
+    // An appearance change goes through immediately even when the budget is spent.
+    const target = npcs[11] as CharacterInstance;
+    target.appearance = withSlot(target.appearance, 'hat', 'hat_02');
+    await t.frame([hero, ...npcs], 3);
+    expect(t.renderer.debugInfo(target.entityId)?.pose?.layers.some((l) => l.itemId === 'hat_02')).toBe(true);
+    expect(t.renderer.auditBindings().violations).toBe(0);
+  });
+
+  it('the default policy uses the projected canvas height (perspective camera, 720 px viewport)', async () => {
+    const { index } = await compiledAssets();
+    const t = setup(index, {}, { lod: { policy: DEFAULT_LOD_POLICY } });
+    await t.frame([character('near', 0), far('far', 0)], 2);
+    const near = t.renderer.projectedHeightPx({ x: 0, y: 0, z: 0 });
+    const farPx = t.renderer.projectedHeightPx({ x: 0, y: 0, z: -10 });
+    // 2 world units at ~6.2 / ~16.3 units distance, fov 35°, 720 px: ~370 px and ~140 px
+    expect(near).toBeGreaterThan(330);
+    expect(near).toBeLessThan(410);
+    expect(farPx).toBeGreaterThan(120);
+    expect(farPx).toBeLessThan(160);
+    expect(t.renderer.debugInfo('near')?.lodLevel).toBe(0);
+    expect(t.renderer.debugInfo('far')?.lodLevel).toBe(1);
   });
 });

@@ -203,6 +203,7 @@ export function buildPanel(root: HTMLElement, app: UvceApp, extras: PanelExtras)
       stats.textContent = [
         `characters ${c.visibleCharacters} visible / ${snap.count} (culled ${c.culledCharacters}), unique looks ${c.uniqueVisibleAppearances}`,
         `layers drawn ${c.visibleLayers}, pending ${c.pendingLayers}, failed ${c.failedLayers}, pose updates ${c.poseUpdates}${c.mode === 'SHADER' ? `, composited ${c.compositedCharacters}/${c.visibleCharacters} characters` : ''}`,
+        ...(c.lodEnabled ? [`LOD high/medium/low/tiny ${c.lodLevels.join('/')}, animation updates deferred ${c.animationDeferred}`] : []),
         ...(c.mode === 'AUTO' ? [`planner: ${c.plannerCachedGroups}/${c.plannerGroups} looks on FULL_CACHE, ${c.plannerSwitches} switches; the rest SHADER; GPU pressure ${app.params.plannerPressure === 'auto' ? (app.pressure.current.pressure ? 'yes' : 'no') : `forced ${app.params.plannerPressure}`} (frame ${app.pressure.current.intervalP50?.toFixed(1) ?? '-'} ms, vsync ${app.pressure.current.refreshMs?.toFixed(1) ?? '-'} ms)`] : []),
         ...(c.mode === 'FULL_CACHE' || c.mode === 'AUTO'
           ? [`frame cache: ${c.cachedCharacters}/${c.visibleCharacters} cached, ${c.compositedCharacters} composited, hit ${c.cacheHitRatio === null ? 'n/a' : `${(c.cacheHitRatio * 100).toFixed(0)}%`}, bakes ${c.frameCacheBakes}/frame, evictions ${c.frameCacheEvictions}, ${(c.compositeEstimatedBytes / 1048576).toFixed(0)} MiB`]

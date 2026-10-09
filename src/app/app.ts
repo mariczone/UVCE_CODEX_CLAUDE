@@ -49,6 +49,8 @@ export interface FrameSnapshot {
   totalCpu: ReturnType<typeof summarize>;
   /** GPU timer query samples; on software rasterizers this is CPU rasterisation time (see env.glRenderer). */
   gpuTimer: ReturnType<typeof summarize>;
+  /** Pose updates per frame over the window. */
+  poseUpdates: ReturnType<typeof summarize>;
   drawCalls: number;
   triangles: number;
   textures: number;
@@ -106,6 +108,8 @@ export class UvceApp {
     renderSubmitCpu: new RollingSeries(600),
     totalCpu: new RollingSeries(600),
     gpu: new RollingSeries(600),
+    /** Character pose re-resolutions per frame (what projected-size LOD reduces). */
+    poseUpdates: new RollingSeries(600),
   };
 
   constructor(opts: { canvas: HTMLCanvasElement; overlayCanvas: HTMLCanvasElement; params: AppParams; manifest: CompiledManifest; assetBaseUrl: string; renderMode: RenderMode }) {
@@ -178,7 +182,7 @@ export class UvceApp {
       mode === 'FULL_CACHE' || mode === 'AUTO'
         ? new WebGLFrameCacheBackend(this.three, createUnitQuadGeometry(), { budgetBytes: this.params.cacheMiB * 1024 * 1024, filter: forced ?? 'linear', mipmaps: this.params.mips, placeholder: createMissingTexture() })
         : null;
-    this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel, mode, frameCache: this.frameCache });
+    this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel, mode, frameCache: this.frameCache, lod: this.params.lod ? { animationBudget: this.params.animBudget } : null });
     for (const s of (this.stage as Partial<ParityStage>).sortables ?? []) this.characters.addSortedObject(s.id, s.object);
     for (const layer of this.params.hide) this.characters.setLayerHidden(layer, true);
     if (this.params.plannerPressure !== 'auto') this.updatePressure(this.pressure.current);
@@ -237,6 +241,7 @@ export class UvceApp {
     const h = Math.max(1, parent.clientHeight);
     this.three.setSize(w, h, false);
     this.env.viewport = { width: w, height: h };
+    this.characters.setViewportHeight(h);
     if (this.camera instanceof THREE.PerspectiveCamera) {
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
@@ -423,6 +428,7 @@ export class UvceApp {
     this.series.updateCpu.push(t1 - t0);
     this.series.renderSubmitCpu.push(t2 - t1);
     this.series.totalCpu.push(t2 - t0);
+    this.series.poseUpdates.push(this.characters.getMetrics().poseUpdates);
     this.lastCpuMs = t2 - t0;
     this.lastInfo = { calls: this.three.info.render.calls, triangles: this.three.info.render.triangles };
     const o = this.overlayOptions;
@@ -481,6 +487,7 @@ export class UvceApp {
       renderSubmitCpu: summarize(this.series.renderSubmitCpu.snapshot()),
       totalCpu: summarize(this.series.totalCpu.snapshot()),
       gpuTimer: summarize(this.series.gpu.snapshot()),
+      poseUpdates: summarize(this.series.poseUpdates.snapshot()),
       drawCalls: this.lastInfo.calls,
       triangles: this.lastInfo.triangles,
       textures: mem.textures,

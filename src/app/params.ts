@@ -35,6 +35,10 @@ export interface AppParams {
   sync: boolean;
   /** AUTO planner GPU-pressure signal: measured from frame timing (auto), or forced on / off (tests, A/B runs). */
   plannerPressure: 'auto' | 'on' | 'off';
+  /** lod=1: Milestone 4 projected-size LOD (lower visual animation rate for small characters). Off by default. */
+  lod: boolean;
+  /** animBudget=N (with lod=1): at most N animation-only pose updates per frame below the HIGH level. */
+  animBudget: number | null;
 }
 
 export function parseParams(search: string): AppParams {
@@ -77,5 +81,7 @@ export function parseParams(search: string): AppParams {
     looks: q.get('looks') === null ? null : Math.max(1, Math.floor(num('looks', 1))),
     sync: q.get('sync') === '1',
     plannerPressure: q.get('plannerPressure') === 'on' ? 'on' : q.get('plannerPressure') === 'off' ? 'off' : 'auto',
+    lod: q.get('lod') === '1',
+    animBudget: q.get('animBudget') === null ? null : Math.max(0, Math.floor(num('animBudget', 0))),
   };
 }

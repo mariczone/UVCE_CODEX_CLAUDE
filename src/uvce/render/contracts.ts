@@ -62,6 +62,12 @@ export interface CharacterRenderMetrics {
   plannerCachedGroups: number;
   plannerGroups: number;
   plannerSwitches: number;
+  /** Milestone 4 projected-size LOD is on (render/lod.ts). */
+  lodEnabled: boolean;
+  /** Visible characters per LOD level this frame: HIGH, MEDIUM, LOW, TINY (all 0 when LOD is off). */
+  lodLevels: number[];
+  /** Animation-only pose updates postponed this frame by the visual animation budget. */
+  animationDeferred: number;
 }
 
 /**
