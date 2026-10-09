@@ -10,6 +10,7 @@ art.**
 
 | Read | What |
 |---|---|
+| [`art-spec/`](art-spec/README.md) | **Artwork specification** (Thai): canvas, pivot, directions, layers, sockets, clips, file format, manifest, templates and examples for real character art |
 | [`docs/LOCAL_TEST_CHECKLIST.md`](docs/LOCAL_TEST_CHECKLIST.md) | **Run this on your own machine:** every test, the GPU benchmark and a manual browser pass, in one go |
 | [`docs/UVCE_MILESTONE_3_PROGRESS.md`](docs/UVCE_MILESTONE_3_PROGRESS.md) | Milestone 3 (in progress): SHADER mode, parity, LAYERED vs SHADER on an RTX 3070 |
 | [`docs/UVCE_MILESTONE_1_2_REPORT.md`](docs/UVCE_MILESTONE_1_2_REPORT.md) | Milestones 1–2: what was built, verified output, performance vs M0, limitations, next steps |

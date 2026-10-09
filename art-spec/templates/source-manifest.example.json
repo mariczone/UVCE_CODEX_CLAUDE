@@ -1,0 +1,1637 @@
+{
+  "schemaVersion": "uvce-source-manifest-v1",
+  "rigs": [
+    {
+      "id": "humanoid_2d_v1",
+      "version": "1",
+      "canonicalCanvas": {
+        "width": 256,
+        "height": 256
+      },
+      "footPivot": {
+        "x": 128,
+        "y": 228
+      },
+      "pixelsPerWorldUnit": 128,
+      "directionMapping": "dir8-compass-cw-v1",
+      "directions": [
+        "N",
+        "NE",
+        "E",
+        "SE",
+        "S",
+        "SW",
+        "W",
+        "NW"
+      ],
+      "sockets": [
+        "head_top",
+        "neck",
+        "chest",
+        "right_hand",
+        "left_hand",
+        "back"
+      ],
+      "layers": [
+        "hair_back",
+        "body",
+        "arm_front",
+        "armor",
+        "head",
+        "hair_front",
+        "hat",
+        "weapon"
+      ],
+      "slots": [
+        {
+          "name": "body",
+          "required": true,
+          "layers": [
+            "body",
+            "arm_front"
+          ]
+        },
+        {
+          "name": "head",
+          "required": true,
+          "layers": [
+            "head"
+          ]
+        },
+        {
+          "name": "hair",
+          "required": false,
+          "layers": [
+            "hair_back",
+            "hair_front"
+          ]
+        },
+        {
+          "name": "armor",
+          "required": false,
+          "layers": [
+            "armor"
+          ]
+        },
+        {
+          "name": "hat",
+          "required": false,
+          "layers": [
+            "hat"
+          ]
+        },
+        {
+          "name": "weapon",
+          "required": false,
+          "layers": [
+            "weapon"
+          ]
+        }
+      ],
+      "socketDriverLayer": "body",
+      "restSockets": {
+        "N": {
+          "head_top": {
+            "x": 128,
+            "y": 47
+          },
+          "neck": {
+            "x": 128,
+            "y": 104
+          },
+          "chest": {
+            "x": 128,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 159,
+            "y": 150
+          },
+          "left_hand": {
+            "x": 97,
+            "y": 150
+          },
+          "back": {
+            "x": 128,
+            "y": 118
+          }
+        },
+        "NE": {
+          "head_top": {
+            "x": 129,
+            "y": 47
+          },
+          "neck": {
+            "x": 129,
+            "y": 104
+          },
+          "chest": {
+            "x": 128,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 151,
+            "y": 150
+          },
+          "left_hand": {
+            "x": 105,
+            "y": 148
+          },
+          "back": {
+            "x": 120,
+            "y": 118
+          }
+        },
+        "E": {
+          "head_top": {
+            "x": 131,
+            "y": 47
+          },
+          "neck": {
+            "x": 129,
+            "y": 104
+          },
+          "chest": {
+            "x": 128,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 133,
+            "y": 150
+          },
+          "left_hand": {
+            "x": 130,
+            "y": 149
+          },
+          "back": {
+            "x": 117,
+            "y": 118
+          }
+        },
+        "SE": {
+          "head_top": {
+            "x": 130,
+            "y": 47
+          },
+          "neck": {
+            "x": 129,
+            "y": 104
+          },
+          "chest": {
+            "x": 127,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 103,
+            "y": 150
+          },
+          "left_hand": {
+            "x": 149,
+            "y": 148
+          },
+          "back": {
+            "x": 120,
+            "y": 118
+          }
+        },
+        "S": {
+          "head_top": {
+            "x": 128,
+            "y": 47
+          },
+          "neck": {
+            "x": 128,
+            "y": 104
+          },
+          "chest": {
+            "x": 128,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 97,
+            "y": 150
+          },
+          "left_hand": {
+            "x": 159,
+            "y": 150
+          },
+          "back": {
+            "x": 128,
+            "y": 118
+          }
+        },
+        "SW": {
+          "head_top": {
+            "x": 126,
+            "y": 47
+          },
+          "neck": {
+            "x": 127,
+            "y": 104
+          },
+          "chest": {
+            "x": 129,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 107,
+            "y": 148
+          },
+          "left_hand": {
+            "x": 153,
+            "y": 150
+          },
+          "back": {
+            "x": 136,
+            "y": 118
+          }
+        },
+        "W": {
+          "head_top": {
+            "x": 125,
+            "y": 47
+          },
+          "neck": {
+            "x": 127,
+            "y": 104
+          },
+          "chest": {
+            "x": 128,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 126,
+            "y": 149
+          },
+          "left_hand": {
+            "x": 123,
+            "y": 150
+          },
+          "back": {
+            "x": 139,
+            "y": 118
+          }
+        },
+        "NW": {
+          "head_top": {
+            "x": 127,
+            "y": 47
+          },
+          "neck": {
+            "x": 127,
+            "y": 104
+          },
+          "chest": {
+            "x": 128,
+            "y": 132
+          },
+          "right_hand": {
+            "x": 151,
+            "y": 148
+          },
+          "left_hand": {
+            "x": 105,
+            "y": 150
+          },
+          "back": {
+            "x": 136,
+            "y": 118
+          }
+        }
+      },
+      "layerOrder": {
+        "N": [
+          "hair_front",
+          "weapon",
+          "body",
+          "armor",
+          "arm_front",
+          "head",
+          "hair_back",
+          "hat"
+        ],
+        "NE": [
+          "hair_front",
+          "body",
+          "armor",
+          "head",
+          "hair_back",
+          "hat",
+          "arm_front",
+          "weapon"
+        ],
+        "E": [
+          "hair_back",
+          "body",
+          "armor",
+          "arm_front",
+          "head",
+          "hair_front",
+          "hat",
+          "weapon"
+        ],
+        "SE": [
+          "hair_back",
+          "body",
+          "armor",
+          "arm_front",
+          "head",
+          "hair_front",
+          "hat",
+          "weapon"
+        ],
+        "S": [
+          "hair_back",
+          "body",
+          "armor",
+          "arm_front",
+          "head",
+          "hair_front",
+          "hat",
+          "weapon"
+        ],
+        "SW": [
+          "hair_back",
+          "weapon",
+          "body",
+          "armor",
+          "arm_front",
+          "head",
+          "hair_front",
+          "hat"
+        ],
+        "W": [
+          "hair_back",
+          "weapon",
+          "body",
+          "armor",
+          "arm_front",
+          "head",
+          "hair_front",
+          "hat"
+        ],
+        "NW": [
+          "hair_front",
+          "weapon",
+          "body",
+          "armor",
+          "arm_front",
+          "head",
+          "hair_back",
+          "hat"
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "id": "idle",
+      "version": "1",
+      "loop": true,
+      "frameDurationsMs": [
+        180,
+        120,
+        120,
+        180,
+        180,
+        120,
+        120,
+        180
+      ]
+    },
+    {
+      "id": "walk",
+      "version": "1",
+      "loop": true,
+      "frameDurationsMs": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "events": [
+        {
+          "name": "footstep",
+          "timeMs": 0
+        },
+        {
+          "name": "footstep",
+          "timeMs": 400
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "body_base",
+      "version": "1",
+      "slot": "body",
+      "rigProfileId": "humanoid_2d_v1",
+      "displayName": "Base body",
+      "filter": "linear",
+      "atlasGroup": "core",
+      "parts": [
+        {
+          "layer": "body",
+          "attach": "root",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "clips": {
+            "idle": {
+              "SE": [
+                {
+                  "file": "body_base/body/idle/SE/000.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 150
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 148
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/SE/001.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/SE/002.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/SE/003.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 49
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 106
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 134
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 152
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 150
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 120
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/SE/004.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 49
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 106
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 134
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 152
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 150
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 120
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/SE/005.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/SE/006.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/SE/007.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 150
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 148
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 118
+                    }
+                  }
+                }
+              ],
+              "S": [
+                {
+                  "file": "body_base/body/idle/S/000.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 150
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 150
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/S/001.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 151
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/S/002.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 151
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/S/003.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 49
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 106
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 134
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 152
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 152
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 120
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/S/004.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 49
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 106
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 134
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 152
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 152
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 120
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/S/005.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 151
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/S/006.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 151
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/idle/S/007.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 150
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 150
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 118
+                    }
+                  }
+                }
+              ]
+            },
+            "walk": {
+              "SE": [
+                {
+                  "file": "body_base/body/walk/SE/000.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 46
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 103
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 131
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 147
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 117
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/SE/001.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 101,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 151,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/SE/002.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 100,
+                      "y": 150
+                    },
+                    "left_hand": {
+                      "x": 153,
+                      "y": 150
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/SE/003.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 101,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 151,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/SE/004.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 46
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 103
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 131
+                    },
+                    "right_hand": {
+                      "x": 103,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 149,
+                      "y": 147
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 117
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/SE/005.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 105,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 147,
+                      "y": 147
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/SE/006.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 107,
+                      "y": 152
+                    },
+                    "left_hand": {
+                      "x": 146,
+                      "y": 148
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/SE/007.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 130,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 129,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 127,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 105,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 147,
+                      "y": 147
+                    },
+                    "back": {
+                      "x": 120,
+                      "y": 118
+                    }
+                  }
+                }
+              ],
+              "S": [
+                {
+                  "file": "body_base/body/walk/S/000.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 46
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 103
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 131
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 117
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/S/001.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 151
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/S/002.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 150
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 153
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/S/003.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 151
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/S/004.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 46
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 103
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 131
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 149
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 117
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/S/005.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 118
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/S/006.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 48
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 105
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 133
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 153
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 150
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 119
+                    }
+                  }
+                },
+                {
+                  "file": "body_base/body/walk/S/007.png",
+                  "sockets": {
+                    "head_top": {
+                      "x": 128,
+                      "y": 47
+                    },
+                    "neck": {
+                      "x": 128,
+                      "y": 104
+                    },
+                    "chest": {
+                      "x": 128,
+                      "y": 132
+                    },
+                    "right_hand": {
+                      "x": 97,
+                      "y": 151
+                    },
+                    "left_hand": {
+                      "x": 159,
+                      "y": 149
+                    },
+                    "back": {
+                      "x": 128,
+                      "y": 118
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "layer": "arm_front",
+          "attach": "root",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "clips": {
+            "idle": {
+              "SE": [
+                {
+                  "file": "body_base/arm_front/idle/SE/000.png"
+                },
+                {
+                  "file": "body_base/arm_front/idle/SE/001.png"
+                },
+                {
+                  "file": "body_base/arm_front/idle/SE/002.png"
+                },
+                {
+                  "file": "body_base/arm_front/idle/SE/003.png"
+                },
+                {
+                  "file": "body_base/arm_front/idle/SE/004.png"
+                },
+                {
+                  "file": "body_base/arm_front/idle/SE/005.png"
+                },
+                {
+                  "file": "body_base/arm_front/idle/SE/006.png"
+                },
+                {
+                  "file": "body_base/arm_front/idle/SE/007.png"
+                }
+              ]
+            },
+            "walk": {
+              "SE": [
+                {
+                  "file": "body_base/arm_front/walk/SE/000.png"
+                },
+                {
+                  "file": "body_base/arm_front/walk/SE/001.png"
+                },
+                {
+                  "file": "body_base/arm_front/walk/SE/002.png"
+                },
+                {
+                  "file": "body_base/arm_front/walk/SE/003.png"
+                },
+                {
+                  "file": "body_base/arm_front/walk/SE/004.png"
+                },
+                {
+                  "file": "body_base/arm_front/walk/SE/005.png"
+                },
+                {
+                  "file": "body_base/arm_front/walk/SE/006.png"
+                },
+                {
+                  "file": "body_base/arm_front/walk/SE/007.png"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "head_base",
+      "version": "1",
+      "slot": "head",
+      "rigProfileId": "humanoid_2d_v1",
+      "displayName": "Base head",
+      "filter": "linear",
+      "atlasGroup": "core",
+      "parts": [
+        {
+          "layer": "head",
+          "attach": "neck",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "static": {
+            "SE": {
+              "file": "head_base/head/static/SE.png",
+              "anchor": {
+                "x": 129,
+                "y": 104
+              }
+            },
+            "S": {
+              "file": "head_base/head/static/S.png",
+              "anchor": {
+                "x": 128,
+                "y": 104
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "hair_01",
+      "version": "1",
+      "slot": "hair",
+      "rigProfileId": "humanoid_2d_v1",
+      "displayName": "Hair 1 (bob)",
+      "filter": "linear",
+      "parts": [
+        {
+          "layer": "hair_back",
+          "attach": "neck",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "static": {
+            "SE": {
+              "file": "hair_01/hair_back/static/SE.png",
+              "anchor": {
+                "x": 129,
+                "y": 104
+              }
+            },
+            "S": {
+              "file": "hair_01/hair_back/static/S.png",
+              "anchor": {
+                "x": 128,
+                "y": 104
+              }
+            }
+          }
+        },
+        {
+          "layer": "hair_front",
+          "attach": "neck",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "static": {
+            "SE": {
+              "file": "hair_01/hair_front/static/SE.png",
+              "anchor": {
+                "x": 129,
+                "y": 104
+              }
+            },
+            "S": {
+              "file": "hair_01/hair_front/static/S.png",
+              "anchor": {
+                "x": 128,
+                "y": 104
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "hat_01",
+      "version": "1",
+      "slot": "hat",
+      "rigProfileId": "humanoid_2d_v1",
+      "displayName": "Hat 1 (straw)",
+      "filter": "linear",
+      "parts": [
+        {
+          "layer": "hat",
+          "attach": "head_top",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "static": {
+            "SE": {
+              "file": "hat_01/hat/static/SE.png",
+              "anchor": {
+                "x": 130,
+                "y": 47
+              }
+            },
+            "S": {
+              "file": "hat_01/hat/static/S.png",
+              "anchor": {
+                "x": 128,
+                "y": 47
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "armor_01",
+      "version": "1",
+      "slot": "armor",
+      "rigProfileId": "humanoid_2d_v1",
+      "displayName": "Armor 1 (tabard)",
+      "filter": "linear",
+      "parts": [
+        {
+          "layer": "armor",
+          "attach": "chest",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "static": {
+            "SE": {
+              "file": "armor_01/armor/static/SE.png",
+              "anchor": {
+                "x": 127,
+                "y": 132
+              }
+            },
+            "S": {
+              "file": "armor_01/armor/static/S.png",
+              "anchor": {
+                "x": 128,
+                "y": 132
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "weapon_01",
+      "version": "1",
+      "slot": "weapon",
+      "rigProfileId": "humanoid_2d_v1",
+      "displayName": "Weapon 1 (sword)",
+      "filter": "linear",
+      "parts": [
+        {
+          "layer": "weapon",
+          "attach": "right_hand",
+          "representation": "FRAME",
+          "allowMirror": false,
+          "static": {
+            "SE": {
+              "file": "weapon_01/weapon/static/SE.png",
+              "anchor": {
+                "x": 103,
+                "y": 150
+              }
+            },
+            "S": {
+              "file": "weapon_01/weapon/static/S.png",
+              "anchor": {
+                "x": 97,
+                "y": 150
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "aliases": {}
+}
