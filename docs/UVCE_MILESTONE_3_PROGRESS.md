@@ -8,9 +8,9 @@ Machine: RTX 3070 / Ryzen 5 5600, Windows 11.
 | # | Task (blueprint §Milestone 3) | Status |
 |---|---|---|
 | 3 | `SHADER` composition behind capability flags with safe fallback | **Done**: `mode=SHADER`, per-character LAYERED fallback, texture-unit check ([ADR-13](UVCE_ARCHITECTURE_DECISIONS.md)) |
-| 4 | Toggle modes, benchmark the same stress matrix, compare cost and fidelity | **Done for LAYERED vs SHADER** on one GPU ([results](benchmark-results/gpu/2026-10-09-rtx3070-m3/README.md)); the UI toggle is the URL parameter |
+| 4 | Toggle modes, benchmark the same stress matrix, compare cost and fidelity | **Done for all three modes** on one GPU ([matrix](benchmark-results/gpu/2026-10-09-rtx3070-pending-runs/README.md)); first SHADER run ([results](benchmark-results/gpu/2026-10-09-rtx3070-m3/README.md)); the UI toggle is the URL parameter |
 | 1 | `PARTIAL_CACHE` for safe non-interleaving groups | Not started |
-| 2 | `FULL_CACHE` with composite page allocator, refcount and budget | **Done (correctness)**: `mode=FULL_CACHE`, render-target cell cache, generations, LRU, admission control, thrash breaker ([ADR-14](UVCE_ARCHITECTURE_DECISIONS.md)). **GPU benchmark pending** (see Pending runs) |
+| 2 | `FULL_CACHE` with composite page allocator, refcount and budget | **Done**: `mode=FULL_CACHE`, render-target cell cache, generations, LRU, admission control, thrash breaker ([ADR-14](UVCE_ARCHITECTURE_DECISIONS.md)); GPU matrix done |
 | 5 | Adaptive render planner with hysteresis | Not started (the renderer can already choose per character) |
 
 The blueprint's M3 exit condition is that at least two modes work on the same inputs with screenshot parity and a
@@ -64,7 +64,7 @@ CPU. It stays off by default until a weaker GPU confirms the trade-off.
 Recorded 2026-10-09 at the owner's request: postponed, not dropped. Each run needs the machine untouched for about
 10–15 minutes (headed Chromium windows pop up). Run on a clean commit and commit the results.
 
-- [ ] **4K fill-rate stress, LAYERED vs SHADER.** This is a proxy for a weaker GPU: 4× the pixels means 4× the
+- [x] **Done 2026-10-09** ([results](benchmark-results/gpu/2026-10-09-rtx3070-pending-runs/README.md)): SHADER keeps its 2.5× CPU win at 4K and both modes hold 60 Hz. **4K fill-rate stress, LAYERED vs SHADER.** This is a proxy for a weaker GPU: 4× the pixels means 4× the
       per-pixel work, while the CPU work stays the same.
       ```powershell
       pnpm build
@@ -74,7 +74,7 @@ Recorded 2026-10-09 at the owner's request: postponed, not dropped. Each run nee
       Use `(Get-Date).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)` for `<date>`, and check
       that `environment.glRenderer` names the RTX 3070. Decision input: if SHADER still wins at 4K, or its raster time
       stays well under the 16.7 ms frame, that supports making it the default.
-- [ ] **FULL_CACHE GPU matrix** (needs the idle machine, about 30 min): for each of `count` 100 and 300 and each
+- [x] **Done 2026-10-09** ([results](benchmark-results/gpu/2026-10-09-rtx3070-pending-runs/README.md)): FULL_CACHE wins only the formation crowd (hit ratio 0.98, −6 % vs SHADER); elsewhere it is 3–11 % slower than SHADER; both are 1.9–2.3× faster than LAYERED. **FULL_CACHE GPU matrix** (needs the idle machine, about 30 min): for each of `count` 100 and 300 and each
       workload `''`, `&looks=8`, `&looks=8&sync=1`, run `mode=LAYERED` / `SHADER` / `FULL_CACHE`:
       ```powershell
       pnpm bench:baseline -- --gpu --headed --counts '100,300' --query '&mode=FULL_CACHE&looks=8&sync=1' --out docs/benchmark-results/gpu/<date>-rtx3070-cache/full-looks8-sync
@@ -89,7 +89,7 @@ Recorded 2026-10-09 at the owner's request: postponed, not dropped. Each run nee
 
 1. Run `mode=SHADER` on a second, weaker GPU with the same commands (`LOCAL_TEST_CHECKLIST.md` §2 plus
    `--query "&mode=SHADER"`) and decide the default.
-2. Run the FULL_CACHE GPU matrix (Pending runs) and write down which mode wins per workload.
+2. Owner decision: make SHADER the default (it won or tied every workload at 1080p and 4K; LAYERED stays the fallback).
 3. An adaptive planner (per character: projected size, swap rate, cache hit chance, measured cost; with hysteresis).
    The FULL_CACHE breaker is a first, cache-local version of that hysteresis.
 4. `PARTIAL_CACHE` only for layer groups that never interleave across directions (lowest priority: FULL_CACHE and

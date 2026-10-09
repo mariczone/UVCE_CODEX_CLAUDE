@@ -1,0 +1,3 @@
+count,visible_characters,visible_layers,draw_calls,cpu_update_p50_ms,cpu_update_p95_ms,cpu_submit_p50_ms,cpu_submit_p95_ms,cpu_total_p50_ms,cpu_total_p95_ms,cpu_total_p99_ms,raf_interval_p50_ms,raf_interval_p95_ms,gpu_timer_p50_ms,resident_pages,page_requests,source_rgba8_mib,downloaded_kib,time_to_ready_ms,resident_gpu_estimate_mib
+100,100,605,712,0.45,0.585,3.285,4.1,3.745,4.585,5.015,16.675,16.72,13.928,12,12,6.063,356.371,588,8.083
+300,300,1802,2108,1.005,1.3,8.5,10.22,9.525,11.385,12.54,16.675,16.725,11.974,12,12,6.063,356.371,532,8.083
