@@ -33,6 +33,8 @@ export interface AppParams {
   looks: number | null;
   /** sync=1: NPCs animate in step (formation-like workload). */
   sync: boolean;
+  /** AUTO planner GPU-pressure signal: measured from frame timing (auto), or forced on / off (tests, A/B runs). */
+  plannerPressure: 'auto' | 'on' | 'off';
 }
 
 export function parseParams(search: string): AppParams {
@@ -74,5 +76,6 @@ export function parseParams(search: string): AppParams {
     cacheMiB: Math.max(8, num('cacheMiB', 64)),
     looks: q.get('looks') === null ? null : Math.max(1, Math.floor(num('looks', 1))),
     sync: q.get('sync') === '1',
+    plannerPressure: q.get('plannerPressure') === 'on' ? 'on' : q.get('plannerPressure') === 'off' ? 'off' : 'auto',
   };
 }

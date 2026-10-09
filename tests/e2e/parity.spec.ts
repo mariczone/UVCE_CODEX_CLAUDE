@@ -166,7 +166,8 @@ test.describe(`${MODE} mode parity`, () => {
 // Milestone 3 planner: AUTO starts on SHADER and moves repeating looks to FULL_CACHE; pixels must not change.
 test('AUTO: after the planner moves both looks to the frame cache, pixels still match the reference', async ({ page }) => {
   const assets = await loadCompiledAssets('public/uvce-compiled');
-  await openApp(page, 'scene=parity&test=1&mode=AUTO&dir=SE');
+  // plannerPressure=on: the headless test machine is not GPU-bound, so the measured signal would (correctly) say no.
+  await openApp(page, 'scene=parity&test=1&mode=AUTO&plannerPressure=on&dir=SE');
   const before = (await api(page, (u) => u.snapshot())).character;
   expect(before.compositedCharacters).toBe(before.visibleCharacters); // SHADER until the first window
   // Paused clock: every frame requests the same frame per look -> potential hit ratio ~1 -> promoted after a window.
@@ -182,4 +183,15 @@ test('AUTO: after the planner moves both looks to the frame cache, pixels still 
   logParity('AUTO (after promotion)', actual, expected, diff);
   expect(diff.mismatched, `max channel delta ${diff.maxChannelDelta}`).toBe(0);
   expect((await api(page, (u) => u.auditBindings())).violations).toBe(0);
+});
+
+test('AUTO without GPU pressure keeps every look on SHADER (caching would only add CPU work)', async ({ page }) => {
+  await openApp(page, 'scene=parity&test=1&mode=AUTO&plannerPressure=off&dir=SE');
+  await api(page, (u) => {
+    for (let i = 0; i < 90; i++) u.tick();
+  });
+  const c = (await api(page, (u) => u.snapshot())).character;
+  expect(c.plannerCachedGroups).toBe(0);
+  expect(c.compositedCharacters).toBe(c.visibleCharacters);
+  expect(c.frameCacheBakes).toBe(0);
 });

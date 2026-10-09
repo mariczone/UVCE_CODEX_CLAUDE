@@ -118,6 +118,10 @@ interface CharacterRecord extends Rankable {
   cachedMesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> | null;
   /** FULL_CACHE: the current pose is shown directly (SHADER/LAYERED) because it is not cached. */
   directShown: boolean;
+  /** Frame-cache key of the current pose (appearance|clip|direction|frame|debug toggles), built on pose change. */
+  frameKey: string;
+  /** AUTO: the group/frame this character is registered with in the planner (null = not registered). */
+  plannerEntry: { group: string; key: string } | null;
   appearanceRef: AppearanceDefinition | null;
   resolved: ResolvedAppearance | null;
   appearanceKey: string;
@@ -333,6 +337,8 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       cached: null,
       cachedMesh: null,
       directShown: false,
+      frameKey: '',
+      plannerEntry: null,
       appearanceRef: null,
       resolved: null,
       appearanceKey: '',
@@ -363,12 +369,28 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     rec.pinned = items;
   }
 
+  /** AUTO: keeps the planner's view of which frames are on screen in sync (only on change). */
+  private plannerShow(rec: CharacterRecord, show: boolean): void {
+    const planner = this.planner;
+    if (!planner) return;
+    const e = rec.plannerEntry;
+    if (show && e && e.group === rec.appearanceKey && e.key === rec.frameKey) return;
+    if (e) planner.leave(e.group, e.key);
+    rec.plannerEntry = null;
+    if (show) {
+      planner.enter(rec.appearanceKey, rec.frameKey);
+      rec.plannerEntry = { group: rec.appearanceKey, key: rec.frameKey };
+    }
+  }
+
   private hideRecord(rec: CharacterRecord): void {
+    this.plannerShow(rec, false);
     rec.group.visible = false;
     if (rec.shadow) rec.shadow.visible = false;
   }
 
   private destroyRecord(rec: CharacterRecord): void {
+    this.plannerShow(rec, false);
     this.pin(rec, NO_ITEMS);
     for (const l of rec.layers) l.mesh.material.dispose();
     rec.composite?.mesh.material.dispose();
@@ -590,11 +612,17 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     w.lookups = 0;
   }
 
+  /** AUTO: latest GPU-pressure reading; the planner only promotes groups to the frame cache under pressure. */
+  setGpuPressure(pressure: boolean): void {
+    this.planner?.setPressure(pressure);
+  }
+
   /** WebGL context lost/restored: cached frames are gone with their render targets. */
   onContextLost(): void {
     this.contextLost = true;
     this.frameCache?.onContextLost();
     this.planner?.reset(); // the cache is empty: every group starts on SHADER again
+    for (const rec of this.records.values()) rec.plannerEntry = null; // reset() forgot every registration
   }
 
   onContextRestored(): void {
@@ -669,6 +697,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       if (key !== rec.poseKey) {
         rec.pose = resolvePose(this.index, rec.resolved, { clipId: c.animation.clipId, direction, frameIndex, hiddenLayers: this.hiddenLayers });
         rec.poseKey = key;
+        rec.frameKey = `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}`;
         rec.direction = direction;
         this.applyPose(rec);
         poseUpdates++;
@@ -698,8 +727,11 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       }
       // Frame key without the registry revision: a baked frame stays valid when source pages are evicted later.
       if (this.mode === 'FULL_CACHE' || this.mode === 'AUTO') {
-        const frameKey = `${rec.appearanceKey}|${c.animation.clipId}|${direction}|${frameIndex}|${this.hiddenRevision}`;
-        this.planner?.observe(rec.appearanceKey, frameKey);
+        const frameKey = rec.frameKey;
+        if (this.planner) {
+          this.planner.request(rec.appearanceKey);
+          this.plannerShow(rec, true);
+        }
         if (this.usesCache(rec)) {
           const hitsBefore = cacheCounters.hits;
           this.presentCached(rec, frameKey, cacheCounters);

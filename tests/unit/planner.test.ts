@@ -4,6 +4,7 @@ import { type PageFetcher, type PageUploader, SourceAssetRegistry } from '../../
 import { companionAppearance, heroAppearance } from '../../src/uvce/bench/crowd.ts';
 import type { CharacterInstance } from '../../src/uvce/render/contracts.ts';
 import { RenderPlanner } from '../../src/uvce/render/planner.ts';
+import { GpuPressureDetector } from '../../src/uvce/render/pressure.ts';
 import { type FrameCacheBackend, FrameCacheAllocator } from '../../src/uvce/render/webgl/frame-cache.ts';
 import { LayeredCharacterRenderer } from '../../src/uvce/render/webgl/layered-renderer.ts';
 import { compiledAssets } from './helpers.ts';
@@ -19,7 +20,7 @@ function drive(p: RenderPlanner, from: number, frames: number, perFrame: (frame:
 
 describe('render planner', () => {
   it('promotes a group whose frames repeat (formation), keeps a group of one-off frames on SHADER', () => {
-    const p = new RenderPlanner({ capacityCells: 100 });
+    const p = new RenderPlanner({ capacityCells: 100, requirePressure: false });
     drive(p, 1, 60, (f) => [
       // 10 characters of look A all on the same frame (synchronised): 1 distinct key per frame-step of 10 frames
       ...Array.from({ length: 10 }, () => ['A', `A|walk|S|${Math.floor(f / 10) % 8}`] as [string, string]),
@@ -32,7 +33,7 @@ describe('render planner', () => {
   });
 
   it('demotes on a low measured hit ratio, but only after the minimum residence (hysteresis)', () => {
-    const p = new RenderPlanner({ capacityCells: 100, minResidenceFrames: 240 });
+    const p = new RenderPlanner({ capacityCells: 100, minResidenceFrames: 240, requirePressure: false });
     drive(p, 1, 60, () => [['A', 'A|idle|S|0']]); // one frame, seen every frame: potential 0.98 -> promoted at frame 60
     expect(p.isCached('A')).toBe(true);
     // Now every lookup misses (e.g. the cache keeps losing the frame): too early to switch back...
@@ -57,7 +58,7 @@ describe('render planner', () => {
   });
 
   it('respects cache capacity: the biggest repeating groups win the room', () => {
-    const p = new RenderPlanner({ capacityCells: 10, capacityShare: 1 }); // room for 10 distinct frames
+    const p = new RenderPlanner({ capacityCells: 10, capacityShare: 1, requirePressure: false }); // room for 10 distinct frames
     drive(p, 1, 60, () => [
       ...Array.from({ length: 24 }, (_, i) => ['big', `big|${i % 12}`] as [string, string]), // 12 frames
       ...Array.from({ length: 16 }, (_, i) => ['mid', `mid|${i % 8}`] as [string, string]), // 8 frames
@@ -70,7 +71,7 @@ describe('render planner', () => {
   });
 
   it('capacity counts frames needed at the same time, not every frame of the window (animation rotates frames)', () => {
-    const p = new RenderPlanner({ capacityCells: 20, capacityShare: 0.8 }); // room for 16 frames at once
+    const p = new RenderPlanner({ capacityCells: 20, capacityShare: 0.8, requirePressure: false }); // room for 16 frames at once
     // 30 characters in step: 8 frames at any moment (directions), a new animation step every 10 frames
     // => 48 distinct frames per window, but only 8 needed at once (LRU recycles the previous step).
     drive(p, 1, 60, (f) => Array.from({ length: 30 }, (_, i) => ['formation', `formation|${i % 8}|${Math.floor(f / 10)}`] as [string, string]));
@@ -79,7 +80,7 @@ describe('render planner', () => {
   });
 
   it('forgets groups that left the view and resets on demand', () => {
-    const p = new RenderPlanner({ capacityCells: 100 });
+    const p = new RenderPlanner({ capacityCells: 100, requirePressure: false });
     drive(p, 1, 60, () => [['A', 'A|0']]);
     expect(p.isCached('A')).toBe(true);
     drive(p, 61, 130, () => []); // A gone for more than a window
@@ -115,6 +116,7 @@ describe('AUTO render mode (renderer + planner)', () => {
       camera.position.set(0, 3, 6);
       camera.lookAt(0, 0.8, 0);
       const renderer = new LayeredCharacterRenderer({ index, registry, scene: new THREE.Scene(), camera, shadows: false, mode: 'AUTO', frameCache: backend });
+      renderer.setGpuPressure(true); // these tests exercise the cache path; the gate itself is tested above
       let frame = 0;
       return {
         renderer,
@@ -165,5 +167,66 @@ describe('AUTO render mode (renderer + planner)', () => {
     await t.frames(crowd, 2, (f) => f * 16);
     expect(t.renderer.getMetrics().plannerCachedGroups).toBe(0);
     expect(t.renderer.getMetrics().compositedCharacters).toBe(6);
+  });
+});
+
+describe('GPU-pressure gate', () => {
+  it('without GPU pressure a perfectly repeating group stays on SHADER; with pressure it is promoted', () => {
+    const p = new RenderPlanner({ capacityCells: 100 }); // requirePressure defaults to true
+    drive(p, 1, 60, () => Array.from({ length: 10 }, () => ['A', 'A|idle|S|0'] as [string, string]));
+    expect(p.isCached('A')).toBe(false); // machine not GPU-bound: caching would only add CPU work
+    p.setPressure(true);
+    drive(p, 61, 60, () => Array.from({ length: 10 }, () => ['A', 'A|idle|S|0'] as [string, string]));
+    expect(p.isCached('A')).toBe(true);
+    p.setPressure(false); // pressure gone (possibly thanks to the cache): no demotion just for that
+    drive(p, 121, 300, () => []);
+    expect(p.stats().pressure).toBe(false);
+  });
+
+  it('enter/leave track frames on screen: a steady group carries its frames across windows', () => {
+    const p = new RenderPlanner({ capacityCells: 100, requirePressure: false });
+    p.beginFrame(1);
+    for (let i = 0; i < 5; i++) p.enter('A', 'A|idle|S|0'); // 5 characters on one frame
+    for (let f = 1; f <= 120; f++) {
+      p.beginFrame(f);
+      for (let i = 0; i < 5; i++) p.request('A'); // steady: requests only, no new frames
+      p.endFrame();
+    }
+    expect(p.isCached('A')).toBe(true);
+    expect(p.stats().capacityUsed).toBe(1);
+    for (let i = 0; i < 5; i++) p.leave('A', 'A|idle|S|0');
+    for (let f = 121; f <= 260; f++) {
+      p.beginFrame(f);
+      p.endFrame();
+    }
+    expect(p.stats().groups).toBe(0); // nothing on screen and no requests for a window: forgotten
+  });
+});
+
+describe('GPU-pressure detector', () => {
+  const feed = (d: GpuPressureDetector, n: number, interval: number, cpu: number) => {
+    let r = d.current;
+    for (let i = 0; i < n; i++) r = d.push(interval, cpu);
+    return r;
+  };
+
+  it('learns the refresh period and reports pressure only for missed frames with an idle CPU', () => {
+    const d = new GpuPressureDetector();
+    expect(feed(d, 60, 16.7, 4).pressure).toBe(false); // fits 60 Hz: nothing to save
+    expect(d.current.refreshMs).toBeCloseTo(16.7);
+    expect(feed(d, 60, 33.3, 5).pressure).toBe(true); // missing vsync while the CPU idles: GPU-bound
+    expect(feed(d, 60, 33.3, 30).pressure).toBe(false); // missing vsync because of the CPU: not GPU pressure
+    expect(feed(d, 60, 16.7, 4).pressure).toBe(false); // recovered
+    expect(d.current.refreshMs).toBeCloseTo(16.7); // the slow windows never raised the refresh estimate
+  });
+
+  it('works on high-refresh displays and ignores invalid samples', () => {
+    const d = new GpuPressureDetector();
+    feed(d, 60, 6.94, 2); // 144 Hz
+    expect(feed(d, 60, 13.9, 3).pressure).toBe(true);
+    const before = d.current;
+    d.push(Number.NaN, 1);
+    d.push(0, 1);
+    expect(d.current).toBe(before);
   });
 });

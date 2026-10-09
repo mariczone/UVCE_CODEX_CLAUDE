@@ -13,6 +13,7 @@ import { indexManifest } from '../uvce/schema/compiled-manifest.ts';
 import type { CharacterInstance, RenderMode } from '../uvce/render/contracts.ts';
 import { MAX_COMPOSITE_LAYERS } from '../uvce/render/webgl/composite-material.ts';
 import { WebGLFrameCacheBackend } from '../uvce/render/webgl/frame-cache.ts';
+import { GpuPressureDetector, type PressureReading } from '../uvce/render/pressure.ts';
 import { createMissingTexture, createUnitQuadGeometry } from '../uvce/render/webgl/sprite-material.ts';
 import { LayeredCharacterRenderer } from '../uvce/render/webgl/layered-renderer.ts';
 import { GpuTimer } from './gpu-timer.ts';
@@ -74,6 +75,9 @@ export class UvceApp {
   renderMode: RenderMode;
   /** Why the requested render mode was replaced on this device (null = as requested). */
   renderModeFallback: string | null = null;
+  /** AUTO: GPU-pressure detector fed from the real frame loop (frame interval + main-thread CPU time). */
+  readonly pressure = new GpuPressureDetector();
+  private lastCpuMs = 0;
   /** FULL_CACHE frame cache (null in other modes). */
   readonly frameCache: WebGLFrameCacheBackend | null;
   readonly gpuTimer: GpuTimer;
@@ -177,6 +181,7 @@ export class UvceApp {
     this.characters = new LayeredCharacterRenderer({ index: this.index, registry: this.registry, scene: this.scene, camera: this.camera, shadows: !pixel, mode, frameCache: this.frameCache });
     for (const s of (this.stage as Partial<ParityStage>).sortables ?? []) this.characters.addSortedObject(s.id, s.object);
     for (const layer of this.params.hide) this.characters.setLayerHidden(layer, true);
+    if (this.params.plannerPressure !== 'auto') this.updatePressure(this.pressure.current);
     this.overlay = new DebugOverlay(opts.overlayCanvas);
     this.overlayOptions = { pivots: this.params.debug, sockets: this.params.debug, layerBoxes: this.params.debug, ranks: false };
     let appearance = heroAppearance();
@@ -418,6 +423,7 @@ export class UvceApp {
     this.series.updateCpu.push(t1 - t0);
     this.series.renderSubmitCpu.push(t2 - t1);
     this.series.totalCpu.push(t2 - t0);
+    this.lastCpuMs = t2 - t0;
     this.lastInfo = { calls: this.three.info.render.calls, triangles: this.three.info.render.triangles };
     const o = this.overlayOptions;
     const overlayOn = this.params.overlay && (o.pivots || o.sockets || o.layerBoxes || o.ranks);
@@ -438,11 +444,18 @@ export class UvceApp {
     if (this.lastTs !== null) {
       const dt = ts - this.lastTs;
       this.series.frameInterval.push(dt);
+      this.updatePressure(this.pressure.push(dt, this.lastCpuMs));
       if (!this.paused) this.simTimeMs += Math.min(dt, 100) * this.timeScale;
     }
     this.lastTs = ts;
     this.tick();
   };
+
+  /** Hands the planner its GPU-pressure signal (measured, or forced by the plannerPressure URL parameter). */
+  private updatePressure(reading: PressureReading): void {
+    const forced = this.params.plannerPressure;
+    this.characters.setGpuPressure(forced === 'on' ? true : forced === 'off' ? false : reading.pressure);
+  }
 
   start(): void {
     if (!this.raf) this.raf = requestAnimationFrame(this.loop);
