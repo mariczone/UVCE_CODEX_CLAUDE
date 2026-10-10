@@ -217,6 +217,12 @@ export interface BuildOptions {
   outDir: string;
   maxPageSize?: number;
   padding?: number;
+  /**
+   * Where an image used by items of several atlas groups is stored. 'first-group' (default, v0.2 behaviour): in the
+   * page of the first group packed (alphabetical). 'shared-group': in its own page set, so no group needs another
+   * group's pages (measured on Mage v3: body_navy sharing body_base's arm images, docs/benchmark-results/mage-v3/).
+   */
+  sharedImages?: 'first-group' | 'shared-group';
 }
 
 interface ItemBuild {
@@ -324,11 +330,34 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
   const images: Record<string, ImageRegion> = {};
   const placedIn = new Map<string, string>(); // image key -> page id
   const reportGroups: BuildReport['groups'] = [];
+  const units: { group: string; members: ItemBuild[]; keys: string[]; mipLevels: number; filter: SourceItem['filter'] }[] = [];
+  if (options.sharedImages === 'shared-group') {
+    // Images used by items of several atlas groups get their own page set (named after the groups sharing them), so
+    // loading one group never drags in another group's pages just because it happened to pack first.
+    const groupsOfKey = new Map<string, Set<string>>();
+    for (const b of builds) for (const k of b.keys) groupsOfKey.set(k, (groupsOfKey.get(k) ?? new Set()).add(b.group));
+    const sharedSets = new Map<string, string[]>();
+    for (const [k, gs] of groupsOfKey) {
+      if (gs.size < 2) continue;
+      const users = builds.filter((b) => gs.has(b.group));
+      if (new Set(users.map((b) => b.item.filter)).size > 1) continue; // mixed filtering: keep first-group placement
+      const name = `shared-${[...gs].sort().join('-')}`;
+      sharedSets.set(name, [...(sharedSets.get(name) ?? []), k]);
+    }
+    for (const [name, keys] of [...sharedSets.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
+      const users = builds.filter((b) => b.keys.some((k) => keys.includes(k)));
+      units.push({ group: name, members: users, keys, mipLevels: Math.max(...users.map((b) => b.mipLevels)), filter: (users[0] as ItemBuild).item.filter });
+    }
+  }
   for (const [group, members] of [...groups.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
     const first = members[0] as ItemBuild;
-    const keys = [...new Set(members.flatMap((m) => m.keys))].filter((k) => !placedIn.has(k));
+    units.push({ group, members, keys: [...new Set(members.flatMap((m) => m.keys))], mipLevels: first.mipLevels, filter: first.item.filter });
+  }
+  for (const unit of units) {
+    const { group, members } = unit;
+    const keys = unit.keys.filter((k) => !placedIn.has(k));
     if (keys.length === 0) continue;
-    const align = 2 ** first.mipLevels;
+    const align = 2 ** unit.mipLevels;
     const packed = packShelves(keys.map((k) => ({ key: k, w: (allImages.get(k) as ValidatedImage).trim.w, h: (allImages.get(k) as ValidatedImage).trim.h })), maxPageSize, padding, align);
     const pageImages = packed.pages.map((pg) => createImage(pg.width, pg.height));
     for (const pl of packed.placements) {
@@ -345,7 +374,7 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
       const file = `pages/${group}-${index}-${contentHash.slice(0, 12)}.png`;
       const png = encodePng(pageImage);
       await writeFile(join(outDir, file), png);
-      pages.push({ id, file, width: pageImage.width, height: pageImage.height, filter: first.item.filter, alpha: 'straight', colorSpace: 'srgb', contentHash, fileBytes: png.byteLength, group, items: [], mipLevels: first.mipLevels });
+      pages.push({ id, file, width: pageImage.width, height: pageImage.height, filter: unit.filter, alpha: 'straight', colorSpace: 'srgb', contentHash, fileBytes: png.byteLength, group, items: [], mipLevels: unit.mipLevels });
       pageIds.push(id);
     }
     for (const pl of packed.placements) {
@@ -359,7 +388,7 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
       group,
       items: members.map((m) => m.item.id),
       pages: groupPages.length,
-      mipLevels: first.mipLevels,
+      mipLevels: unit.mipLevels,
       pageBytesRGBA8: groupPages.reduce((acc, pg) => acc + textureBytes(pg.width, pg.height, false), 0),
       pageBytesWithMips: groupPages.reduce((acc, pg) => acc + textureBytes(pg.width, pg.height, pg.mipLevels > 0), 0),
       pageFileBytes: groupPages.reduce((acc, pg) => acc + pg.fileBytes, 0),

@@ -53,6 +53,8 @@ const date = new Date().toISOString().slice(0, 10);
 const outDir = opt('--out', `docs/benchmark-results/baseline/${date}`);
 /** Extra URL parameters for A/B runs, e.g. '&mips=0' (recorded in the summary). */
 const extraQuery = opt('--query', '');
+/** Built app to serve (default dist/); a dist built with UVCE_PUBLIC_DIR benchmarks another compiled asset set. */
+const distDir = opt('--dist', 'dist');
 
 const median = (v: number[]): number => {
   const s = [...v].sort((a, b) => a - b);
@@ -98,11 +100,11 @@ const git = (cmd: string): string => {
 // Record the code state BEFORE this run writes any output (outputs would mark the tree dirty).
 const commit = git('git rev-parse HEAD');
 const workingTree = git('git status --porcelain') === '' ? 'clean' : 'dirty';
-const server = await startPreviewServer(4177);
+const server = await startPreviewServer(4177, distDir);
 const browser = await launchChromium({ swiftshader, headed: args.includes('--headed') });
 try {
   await mkdir(outDir, { recursive: true });
-  const manifest = JSON.parse(await readFile('public/uvce-compiled/manifest.json', 'utf8')) as {
+  const manifest = JSON.parse(await readFile(`${distDir}/uvce-compiled/manifest.json`, 'utf8')) as {
     manifestVersion: string;
     stats: unknown;
     pages: { id: string; width: number; height: number }[];
@@ -175,6 +177,7 @@ try {
       viewport: { width, height, deviceScaleFactor: 1 },
       seed,
       extraQuery,
+      dist: distDir,
       chromiumArgs: swiftshader ? SWIFTSHADER_ARGS : [],
       scene: 'stage scene, perspective camera framed per count, animation playing, MSAA on, overlay and side panel off (bench=1, canvas = full viewport)',
       aggregation: 'per run: nearest-rank percentiles over all frames in the window; reported: median across runs',

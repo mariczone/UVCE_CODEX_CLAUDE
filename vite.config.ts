@@ -7,7 +7,8 @@ const isolation = { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-E
 export default defineConfig({
   // Compiled UVCE assets are written to public/uvce-compiled by `pnpm assets:build`
   // and served/copied verbatim (content-addressed file names, no bundler processing).
-  publicDir: 'public',
+  // UVCE_PUBLIC_DIR builds/serves another compiled set (e.g. a real-art benchmark set) without touching public/.
+  publicDir: process.env.UVCE_PUBLIC_DIR ?? 'public',
   server: { port: 5173, headers: isolation },
   preview: { port: 4173, headers: isolation },
   build: {

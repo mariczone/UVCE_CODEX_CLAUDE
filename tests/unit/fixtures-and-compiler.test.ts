@@ -248,6 +248,13 @@ describe('asset compiler', () => {
     expect(report.crossGroupShared.every((c) => c.page === 'page-hat_01-0')).toBe(true);
     // Item content hashes ignore grouping/placement: identical content => identical hash except for the id.
     expect(copy?.contentHash).not.toBe(original?.contentHash);
+    // sharedImages 'shared-group': the shared images get their own page set, so neither group needs the other's pages.
+    const { manifest: shared } = await buildAssets({ sourceDir: src, outDir: join(dir, 'out-shared'), sharedImages: 'shared-group' });
+    const sharedPage = 'page-shared-hat_01-zz_shared_test-0';
+    expect(shared.items.find((i) => i.id === 'hat_01')?.pages).toEqual([sharedPage]);
+    expect(shared.items.find((i) => i.id === 'hat_01_recolor_pending')?.pages).toEqual([sharedPage]);
+    expect(shared.pages.map((p) => p.id)).not.toContain('page-hat_01-0'); // nothing else left for that group
+    expect(shared.stats.uniqueImages).toBe(out.stats.uniqueImages);
   });
 
   it('rejects atlas groups that mix filtering or mip settings', async () => {

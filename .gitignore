@@ -14,3 +14,7 @@ public/uvce-compiled/
 .env
 .env.*
 !.env.example
+
+# Benchmark art copied from the owner's art sessions (not committed without the owner's decision); dist variants
+bench-data/
+dist-*/
