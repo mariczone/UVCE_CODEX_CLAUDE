@@ -70,12 +70,23 @@ describe('compiled manifest validation', () => {
     expect(codes(m)).toEqual(expect.arrayContaining(['part.layer', 'part.attach', 'frame.image']));
   });
 
-  it('rejects non-FRAME representations in this milestone with an explicit message', async () => {
+  it('rejects PROCEDURAL (reserved) and malformed RIG parts with explicit messages', async () => {
     const m = await manifestJson();
-    (m.items[0]?.parts[0] as { representation: string }).representation = 'RIG';
+    (m.items[0]?.parts[0] as { representation: string }).representation = 'PROCEDURAL';
     const r = parseCompiledManifest(m);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.issues.find((i) => i.code === 'part.representation')?.message).toMatch(/FRAME only/);
+    if (!r.ok) expect(r.issues.find((i) => i.code === 'part.representation')?.message).toMatch(/PROCEDURAL is reserved/);
+    // body_base's body part has clips and no motion: not a valid RIG part.
+    const m2 = await manifestJson();
+    (m2.items[0]?.parts[0] as { representation: string }).representation = 'RIG';
+    const r2 = parseCompiledManifest(m2);
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.issues.filter((i) => i.code === 'part.rig').map((i) => i.message)).toEqual(['RIG parts provide static images only (motion comes from the rig)', 'RIG parts need a motion spec']);
+    // motion on a FRAME part is rejected too.
+    const m3 = await manifestJson();
+    (m3.items[0]?.parts[0] as { motion?: unknown }).motion = { lagFrames: 1, gain: 1, maxOffsetPx: 1, degPerPx: 0, maxDeg: 0 };
+    const r3 = parseCompiledManifest(m3);
+    expect(r3.ok).toBe(false);
   });
 
   it('rejects atlas regions outside their page and dangling aliases', async () => {

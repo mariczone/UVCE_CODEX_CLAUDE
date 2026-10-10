@@ -69,7 +69,8 @@ export async function generateFixtures(options: GenerateOptions): Promise<Genera
     const parts: SourcePart[] = [];
     for (const partSpec of spec.parts) {
       const mirror = spec.mirror === true;
-      const part: SourcePart = { layer: partSpec.layer, attach: partSpec.attach, representation: 'FRAME', allowMirror: mirror };
+      const part: SourcePart = { layer: partSpec.layer, attach: partSpec.attach, representation: partSpec.motion ? 'RIG' : 'FRAME', allowMirror: mirror };
+      if (partSpec.motion) part.motion = { ...partSpec.motion };
       if (partSpec.animated) {
         const clips: NonNullable<SourcePart['clips']> = {};
         for (const clip of CLIPS) {

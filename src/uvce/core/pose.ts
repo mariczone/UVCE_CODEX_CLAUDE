@@ -5,6 +5,7 @@ import type { Direction8 } from './directions.ts';
 import type { Rect, Vec2 } from './geometry.ts';
 import { unionRect } from './geometry.ts';
 import { type Issue, issue } from './issues.ts';
+import { type LayerRotation, rotatedBounds, secondaryTransform } from './secondary-motion.ts';
 
 export interface PoseRequest {
   clipId: string;
@@ -26,6 +27,8 @@ export interface ResolvedLayer {
   order: number;
   /** Sample the image horizontally flipped (a mirrored direction, see core/mirror.ts); dest is already mirrored. */
   mirror: boolean;
+  /** RIG secondary motion: rotation about a canvas point (dest already includes the integer offset); null = none. */
+  rotation: LayerRotation | null;
 }
 
 export interface ResolvedPose {
@@ -86,14 +89,25 @@ export function resolvePose(index: ManifestIndex, appearance: ResolvedAppearance
       issues.push(issue('error', 'pose.image', `/layers/${layer}`, `image ${frame.image} missing from manifest`));
       continue;
     }
+    let rotation: LayerRotation | null = null;
+    let ox = 0;
+    let oy = 0;
+    if (source.part.representation === 'RIG' && source.part.motion) {
+      const follow = source.part.motion.follow ?? source.part.attach;
+      const socketAt = (f: number): Vec2 | undefined => (driver ? partFrame(driver.part, clipId, direction, f)?.sockets?.[follow] : undefined) ?? rig.restSockets[direction][follow];
+      const t = secondaryTransform(source.part.motion, socketAt, frameIndex, clip.frameDurationsMs.length, clip.loop);
+      ox = t.dx;
+      oy = t.dy;
+      if (t.rotation) rotation = { deg: t.rotation.deg, pivot: { x: socket.x + ox + 0.5, y: socket.y + oy + 0.5 } };
+    }
     const dest: Rect = {
-      x: frame.trim.x + socket.x - frame.anchor.x,
-      y: frame.trim.y + socket.y - frame.anchor.y,
+      x: frame.trim.x + socket.x - frame.anchor.x + ox,
+      y: frame.trim.y + socket.y - frame.anchor.y + oy,
       w: frame.trim.w,
       h: frame.trim.h,
     };
-    bounds = unionRect(bounds, dest);
-    layers.push({ layer, slot: source.slot.slot, itemId: source.slot.item.id, image: frame.image, region, dest, order: layers.length, mirror: frame.mirror === true });
+    bounds = unionRect(bounds, rotation ? rotatedBounds(dest, rotation) : dest);
+    layers.push({ layer, slot: source.slot.slot, itemId: source.slot.item.id, image: frame.image, region, dest, order: layers.length, mirror: frame.mirror === true, rotation });
   }
   return { clipId, direction, frameIndex, sockets, layers, bounds, issues };
 }

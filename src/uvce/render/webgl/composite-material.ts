@@ -12,6 +12,7 @@
  * Sampling is unconditional inside a uniform branch, so mip derivatives stay well defined.
  */
 import * as THREE from 'three';
+import { type LayerRotation, rotatedBounds } from '../../core/secondary-motion.ts';
 
 /** Layers per composite draw: the rig's layer count; needs as many texture units (WebGL2 guarantees 16). */
 export const MAX_COMPOSITE_LAYERS = 8;
@@ -45,15 +46,18 @@ void main() {
 
 function fragmentShader(slots: number, bake = false): string {
   const samplers = Array.from({ length: slots }, (_, i) => `uniform sampler2D uMap${i};`).join('\n');
-  const steps = Array.from({ length: slots }, (_, i) => `  if (uCount > ${i}) { vec4 s = layerSample(uMap${i}, uQuad[${i}], uUv[${i}]); acc = s + (1.0 - s.a) * acc; }`).join('\n');
+  const steps = Array.from({ length: slots }, (_, i) => `  if (uCount > ${i}) { vec4 s = layerSample(uMap${i}, uQuad[${i}], uUv[${i}], uRot[${i}]); acc = s + (1.0 - s.a) * acc; }`).join('\n');
   return /* glsl */ `
 ${samplers}
 uniform vec4 uQuad[${slots}];  // per layer: top-left (px from pivot) and size, incl. filter margin
 uniform vec4 uUv[${slots}];    // per layer: u0, vTop, u1, vBottom
+uniform vec4 uRot[${slots}];   // per layer: cos, sin, rotation pivot (px from the foot pivot); identity (1, 0, 0, 0)
 uniform int uCount;
 varying vec2 vPx;
-vec4 layerSample(sampler2D map, vec4 quad, vec4 uvRect) {
-  vec2 t = (vPx - quad.xy) / quad.zw;
+vec4 layerSample(sampler2D map, vec4 quad, vec4 uvRect, vec4 rot) {
+  vec2 d = vPx - rot.zw;
+  vec2 p = rot.zw + vec2(rot.x * d.x + rot.y * d.y, -rot.y * d.x + rot.x * d.y); // inverse RIG rotation
+  vec2 t = (p - quad.xy) / quad.zw;
   vec4 c = texture2D(map, vec2(mix(uvRect.x, uvRect.z, t.x), mix(uvRect.y, uvRect.w, t.y)));
   // Half-open [0, 1) like the rasterizer's top-left rule: a pixel centre exactly on a right/bottom edge is outside.
   float inside = step(0.0, t.x) * step(0.0, t.y) * (1.0 - step(1.0, t.x)) * (1.0 - step(1.0, t.y));
@@ -73,6 +77,7 @@ function compositeUniforms(placeholder: THREE.Texture): Record<string, THREE.IUn
     uBounds: { value: new THREE.Vector4() },
     uQuad: { value: Array.from({ length: MAX_COMPOSITE_LAYERS }, () => new THREE.Vector4()) },
     uUv: { value: Array.from({ length: MAX_COMPOSITE_LAYERS }, () => new THREE.Vector4()) },
+    uRot: { value: Array.from({ length: MAX_COMPOSITE_LAYERS }, () => new THREE.Vector4(1, 0, 0, 0)) },
     uCount: { value: 0 },
   };
   for (let i = 0; i < MAX_COMPOSITE_LAYERS; i++) uniforms[`uMap${i}`] = { value: placeholder };
@@ -96,9 +101,16 @@ export function createBakeMaterial(placeholder: THREE.Texture): THREE.ShaderMate
 
 /** One resident layer to composite (see ResolvedLayer: dest on the canonical canvas, region on its page). */
 export interface CompositeLayerInput {
-  layer: UvLayer & { order: number; dest: { x: number; y: number; w: number; h: number } };
+  layer: UvLayer & { order: number; dest: { x: number; y: number; w: number; h: number }; rotation?: LayerRotation | null };
   page: { width: number; height: number };
   texture: THREE.Texture;
+}
+
+/** uRot value of a layer: (cos, sin, pivot relative to the foot pivot), identity when the layer is not rotated. */
+export function layerRotationUniform(rotation: LayerRotation | null | undefined, footPivot: { x: number; y: number }, out: THREE.Vector4): THREE.Vector4 {
+  if (!rotation) return out.set(1, 0, 0, 0);
+  const a = (rotation.deg * Math.PI) / 180;
+  return out.set(Math.cos(a), Math.sin(a), rotation.pivot.x - footPivot.x, rotation.pivot.y - footPivot.y);
 }
 
 /** The part of a ResolvedLayer that decides its texture coordinates. */
@@ -112,7 +124,7 @@ export interface UvLayer {
  * UV rect (u0, vTop, u1, vBottom) of a layer's page region grown by the filter margin. A mirrored layer swaps u0 and
  * u1: the margin is symmetric, so this is an exact horizontal flip of the sampled image inside the (mirrored) quad.
  */
-export function layerUvRect(layer: UvLayer,page: { width: number; height: number }, m: number, out: THREE.Vector4): THREE.Vector4 {
+export function layerUvRect(layer: UvLayer, page: { width: number; height: number }, m: number, out: THREE.Vector4): THREE.Vector4 {
   const { region } = layer;
   const left = (region.x - m) / page.width;
   const right = (region.x + region.w + m) / page.width;
@@ -132,6 +144,7 @@ export function setCompositeLayers(
 ): { x: number; y: number; w: number; h: number } {
   const quads = u.uQuad?.value as THREE.Vector4[];
   const uvs = u.uUv?.value as THREE.Vector4[];
+  const rots = u.uRot?.value as THREE.Vector4[];
   const m = margin;
   let x0 = Infinity;
   let y0 = Infinity;
@@ -145,11 +158,14 @@ export function setCompositeLayers(
     const qh = layer.dest.h + 2 * m;
     (quads[i] as THREE.Vector4).set(qx, qy, qw, qh);
     layerUvRect(layer, page, m, uvs[i] as THREE.Vector4);
+    layerRotationUniform(layer.rotation, pivot, rots[i] as THREE.Vector4);
     (u[`uMap${i}`] as THREE.IUniform).value = texture;
-    x0 = Math.min(x0, qx);
-    y0 = Math.min(y0, qy);
-    x1 = Math.max(x1, qx + qw);
-    y1 = Math.max(y1, qy + qh);
+    // A rotated layer covers the bounding box of its rotated quad (canvas coords -> px from the foot pivot).
+    const box = layer.rotation ? rotatedBounds({ x: qx + pivot.x, y: qy + pivot.y, w: qw, h: qh }, layer.rotation) : { x: qx + pivot.x, y: qy + pivot.y, w: qw, h: qh };
+    x0 = Math.min(x0, box.x - pivot.x);
+    y0 = Math.min(y0, box.y - pivot.y);
+    x1 = Math.max(x1, box.x - pivot.x + box.w);
+    y1 = Math.max(y1, box.y - pivot.y + box.h);
   });
   for (let i = ordered.length; i < MAX_COMPOSITE_LAYERS; i++) (u[`uMap${i}`] as THREE.IUniform).value = placeholder;
   (u.uCount as THREE.IUniform).value = ordered.length;

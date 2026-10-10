@@ -47,7 +47,7 @@ describe('deterministic seeded fixture generator', () => {
     for (const item of m.items) {
       for (const part of item.parts) {
         for (const { frame } of sourcePartFrames(part)) {
-          const png = decodePng(await readFile(join(fixtures().sourceDir, frame.file)));
+          const png = decodePng(await readFile(join(fixtures().sourceDir, frame.file as string)));
           expect(png.hasAlpha && png.colorType === 6 && png.depth === 8).toBe(true);
           expect([png.image.width, png.image.height]).toEqual([256, 256]);
           const b = opaqueBounds(png.image);
@@ -114,7 +114,7 @@ describe('asset compiler', () => {
           const restored = createImage(256, 256);
           const pixels = cropImage(pageImg, region);
           for (let y = 0; y < pixels.height; y++) restored.data.set(pixels.data.subarray(y * pixels.width * 4, (y + 1) * pixels.width * 4), ((cf.trim.y + y) * 256 + cf.trim.x) * 4);
-          const original = decodePng(await readFile(join(fixtures().sourceDir, frame.file))).image;
+          const original = decodePng(await readFile(join(fixtures().sourceDir, frame.file as string))).image;
           expect(Buffer.compare(Buffer.from(restored.data), Buffer.from(original.data)), frame.file).toBe(0);
         }
       }

@@ -4,7 +4,7 @@
  */
 import { DIRECTIONS, DIRECTION_MAPPING_VERSION, type Direction8, byDirection } from '../../src/uvce/core/directions.ts';
 import type { Vec2 } from '../../src/uvce/core/geometry.ts';
-import type { ClipDefinition, RigProfile } from '../../src/uvce/schema/common.ts';
+import type { ClipDefinition, RigProfile, SecondaryMotion } from '../../src/uvce/schema/common.ts';
 
 export const GENERATOR_NAME = 'tools/uvce/generate-fixtures.ts';
 export const GENERATOR_VERSION = '1.1.0';
@@ -65,6 +65,12 @@ export const CLIPS: ClipDefinition[] = [
   },
 ];
 
+/** Secondary motion of the RIG fixture part: trails the neck by one frame, up to 3 px and 8 degrees. */
+export const HAIR_SWAY: SecondaryMotion = { lagFrames: 1, gain: 1, maxOffsetPx: 3, degPerPx: 4, maxDeg: 8 };
+
+/** Secondary motion of the staff: trails the hand by one frame, up to 2 px and 8 degrees of tilt. */
+export const STAFF_SWING: SecondaryMotion = { lagFrames: 1, gain: 0.5, maxOffsetPx: 2, degPerPx: 2, maxDeg: 8 };
+
 export interface ItemSpec {
   id: string;
   slot: string;
@@ -72,7 +78,7 @@ export interface ItemSpec {
   /** Items that are always co-used share atlas pages. */
   atlasGroup?: string;
   /** Which layers it provides and to which socket each attaches. */
-  parts: { layer: FixtureLayer; attach: FixtureSocket | 'root'; animated: boolean }[];
+  parts: { layer: FixtureLayer; attach: FixtureSocket | 'root'; animated: boolean; motion?: SecondaryMotion }[];
   /** Drawn in 5 directions only (N NE E SE S); the compiler mirrors W/SW/NW from E/SE/NE (allowMirror). */
   mirror?: boolean;
 }
@@ -95,7 +101,8 @@ export const ITEMS: ItemSpec[] = [
     displayName: n === '01' ? 'Hair 1 (bob)' : 'Hair 2 (long)',
     mirror: n === '02',
     parts: [
-      { layer: 'hair_back' as const, attach: 'neck' as const, animated: false },
+      // hair_02's back hair is a RIG part (Milestone 4): it trails the neck with secondary motion.
+      { layer: 'hair_back' as const, attach: 'neck' as const, animated: false, ...(n === '02' ? { motion: HAIR_SWAY } : {}) },
       { layer: 'hair_front' as const, attach: 'neck' as const, animated: false },
     ],
   })),
@@ -118,7 +125,8 @@ export const ITEMS: ItemSpec[] = [
     mirror: n === '02',
     slot: 'weapon',
     displayName: ['Weapon 1 (sword)', 'Weapon 2 (staff)', 'Weapon 3 (axe)'][i] as string,
-    parts: [{ layer: 'weapon' as const, attach: 'right_hand' as const, animated: false }],
+    // weapon_02 (staff) is a RIG part: it lags and tilts behind the hand swing of the walk cycle.
+    parts: [{ layer: 'weapon' as const, attach: 'right_hand' as const, animated: false, ...(n === '02' ? { motion: STAFF_SWING } : {}) }],
   })),
 ];
 

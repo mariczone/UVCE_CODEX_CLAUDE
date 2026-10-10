@@ -10,8 +10,8 @@ The owner is producing a new real sprite set; every result below was measured on
 |---|---|---|
 | 3 | Projected-size LOD and adaptive visual animation budget; no simulation changes | **Done, opt-in** (`lod=1`, `animBudget=N`, [ADR-17](UVCE_ARCHITECTURE_DECISIONS.md)). No measurable gain on the synthetic clips ([results](benchmark-results/lod/README.md)) |
 | 4 | Synthetic nearby-player appearance broadcast, dependency prefetch, queued GPU uploads | **Done** (`net=1`, [ADR-18](UVCE_ARCHITECTURE_DECISIONS.md)): revisioned protocol with resync, synthetic lossy network, interest prefetch (0 pop-ins with a 1.5 s lead), upload byte cap |
-| 1 | Shared socket rig with Idle/Walk and optional hair/cape secondary motion | Next: secondary motion through the RIG representation |
-| 2 | FRAME + RIG support; HYBRID behind an experimental flag | Next |
+| 1 | Shared socket rig with Idle/Walk and optional hair/cape secondary motion | **Done** (RIG `motion`, [ADR-19](UVCE_ARCHITECTURE_DECISIONS.md)): trailing offset + rotation from the clip's socket track; pixel-exact GPU/CPU parity and mirror symmetry |
+| 2 | FRAME + RIG support; HYBRID behind an experimental flag | **Done** (ADR-19): RIG in all render modes; HYBRID sparse keyframes behind `experimental.hybrid` (compiled to full frame lists) |
 | 5 | Full 3D occlusion/bridge/crossing tests with realistic sprite artwork | **Waiting for the real sprite set** (the M1 crossing/arch/glass scenes exist with synthetic art) |
 
 Blueprint Definition of Done for M4: real art import (2 directions first), shared rig/direction/attachment, LOD and
@@ -21,8 +21,9 @@ prefetch, crowd scenes 100/300 with a report. LOD and prefetch are in; real art 
 
 ```text
 pnpm typecheck     exit 0
-pnpm test          Test Files 15 passed, Tests 142 passed
-pnpm test:e2e      55 passed (incl. lod.spec.ts and net.spec.ts)
+pnpm test          Test Files 16 passed, Tests 148 passed
+pnpm test:e2e      55 passed (incl. lod.spec.ts, net.spec.ts; parity now covers mirrored and rotated RIG layers)
+legacy validator   PASS
 ```
 
 ## Re-test with the real sprites (owner's new set)
@@ -31,5 +32,7 @@ pnpm test:e2e      55 passed (incl. lod.spec.ts and net.spec.ts)
    set above. The parity, mirror and residency tests run on whatever art is compiled.
 2. LOD: rerun `docs/benchmark-results/lod/README.md` (headless) and a headed GPU run with `&lod=1&animBudget=40` vs
    default. If the real clips run faster than 12 fps, LOW/TINY throttling should cut pose updates; decide the default.
-3. Streaming: `?count=300&net=1&netLeadMs=0` vs `netLeadMs=1500`, read pop-ins from the panel. Real pages are larger,
+3. RIG: if the real hair/cape should sway, mark those parts `RIG` with a `motion` spec (art-spec 05) and look at the
+   walk in the app; tune gain/degPerPx. The real body's socket track decides how much they move.
+4. Streaming: `?count=300&net=1&netLeadMs=0` vs `netLeadMs=1500`, read pop-ins from the panel. Real pages are larger,
    so pop-ins without a lead will be higher; try `uploadBytesPerFrame` if uploads hitch.

@@ -5,7 +5,7 @@
  */
 import type { Vec2 } from '../core/geometry.ts';
 import type { ResolvedPose } from '../core/pose.ts';
-import { type RgbaImage, blitOver, createImage } from './rgba.ts';
+import { type RgbaImage, blitOver, blitOverRotated, createImage } from './rgba.ts';
 
 export type PageLookup = (pageId: string) => RgbaImage | undefined;
 
@@ -23,6 +23,11 @@ export function composePose(
   for (const layer of pose.layers) {
     const page = pages(layer.region.page);
     if (!page) throw new Error(`reference compositor: page ${layer.region.page} not loaded`);
+    if (layer.rotation) {
+      const r = layer.rotation;
+      blitOverRotated(target, page, origin.x + layer.dest.x, origin.y + layer.dest.y, layer.region, layer.mirror, r.deg, { x: origin.x + r.pivot.x, y: origin.y + r.pivot.y });
+      continue;
+    }
     blitOver(target, page, origin.x + layer.dest.x, origin.y + layer.dest.y, {
       x: layer.region.x,
       y: layer.region.y,

@@ -16,11 +16,12 @@ import { appearanceKey } from '../../core/cache-keys.ts';
 import { type Direction8, type ViewerPose, spriteDirection, viewYawForCharacter } from '../../core/directions.ts';
 import type { Issue } from '../../core/issues.ts';
 import { type ResolvedPose, resolvePose } from '../../core/pose.ts';
+import { rotatedBounds } from '../../core/secondary-motion.ts';
 import type { PageHandle, ResidencyView } from '../../assets/source-registry.ts';
 import type { AppearanceDefinition } from '../../schema/appearance.ts';
 import type { ManifestIndex } from '../../schema/compiled-manifest.ts';
 import type { CharacterInstance, CharacterRenderMetrics, ICharacterRenderer } from '../contracts.ts';
-import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, layerUvRect, setCompositeLayers } from './composite-material.ts';
+import { type CompositeLayerInput, MAX_COMPOSITE_LAYERS, createCompositeMaterial, layerRotationUniform, layerUvRect, setCompositeLayers } from './composite-material.ts';
 import { type BakeJob, type CacheCell, CANVAS_SIZE, CELL_OFFSET, type FrameCacheBackend } from './frame-cache.ts';
 import { AnimationBudget, DEFAULT_LOD_POLICY, type LodPolicy, lodLevelFor, lodPhaseMs, throttledTimeMs } from '../lod.ts';
 import { type PlannerDecision, type PlannerGroupRef, RenderPlanner } from '../planner.ts';
@@ -514,6 +515,13 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
       lm.handle = texture ? handle : null;
       const u = lm.mesh.material.uniforms;
       (u.uQuad?.value as THREE.Vector4).set(layer.dest.x - rig.footPivot.x - m, layer.dest.y - rig.footPivot.y - m, layer.dest.w + 2 * m, layer.dest.h + 2 * m);
+      layerRotationUniform(layer.rotation, rig.footPivot, u.uRot?.value as THREE.Vector4);
+      const quad = u.uQuad?.value as THREE.Vector4;
+      if (layer.rotation) {
+        const fp = rig.footPivot;
+        const box = rotatedBounds({ x: quad.x + fp.x, y: quad.y + fp.y, w: quad.z, h: quad.w }, layer.rotation);
+        (u.uBox?.value as THREE.Vector4).set(box.x - fp.x, box.y - fp.y, box.w, box.h);
+      } else (u.uBox?.value as THREE.Vector4).copy(quad);
       if (texture) {
         layerUvRect(layer, page, m, u.uUvRect?.value as THREE.Vector4);
         (u.uMap as THREE.IUniform).value = texture;
@@ -614,6 +622,7 @@ export class LayeredCharacterRenderer implements ICharacterRenderer {
     const mesh = this.cachedQuad(rec);
     const u = mesh.material.uniforms;
     (u.uQuad?.value as THREE.Vector4).set(b.x - rig.footPivot.x - m, b.y - rig.footPivot.y - m, b.w + 2 * m, b.h + 2 * m);
+    (u.uBox?.value as THREE.Vector4).copy(u.uQuad?.value as THREE.Vector4); // baked frames are never rotated
     cache.uvRect(cell, { x: b.x - m, y: b.y - m, w: b.w + 2 * m, h: b.h + 2 * m }, u.uUvRect?.value as THREE.Vector4);
     (u.uMap as THREE.IUniform).value = cache.pageTexture(cell.page);
     (u.uOpacity as THREE.IUniform).value = 1;

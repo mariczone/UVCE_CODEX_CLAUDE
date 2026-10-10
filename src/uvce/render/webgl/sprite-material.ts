@@ -14,29 +14,50 @@
  */
 import * as THREE from 'three';
 
+// RIG rotation (Milestone 4) is NOT done by rotating the vertices: the rasterizer snaps rotated corners to its
+// sub-pixel grid, which shifts the affine texture mapping slightly and flips nearest samples near texel edges. A rotated
+// layer instead draws its axis-aligned bounding box (uBox) and inverse-rotates each fragment, exactly like the SHADER
+// composite and the CPU reference (blitOverRotated). Unrotated layers keep the interpolated-UV path (uBox = uQuad).
 const vertexShader = /* glsl */ `
-uniform vec4 uQuad;        // xy: top-left offset from the foot pivot (source px, y down); zw: size (px)
+uniform vec4 uQuad;        // layer rect incl. filter margin: xy top-left offset from the foot pivot (px, y down), zw size
+uniform vec4 uBox;         // drawn rect (= uQuad, or the bounding box of the rotated uQuad)
 uniform vec4 uUvRect;      // u0, vTop, u1, vBottom
 uniform float uPixelsPerUnit;
 uniform float uDepthBias;
 varying vec2 vUv;
+varying vec2 vPx;
 void main() {
   vec4 anchor = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-  vec2 px = uQuad.xy + position.xy * uQuad.zw;
+  vec2 px = uBox.xy + position.xy * uBox.zw;
   vec4 viewPos = vec4(anchor.xyz + vec3(px.x, -px.y, 0.0) / uPixelsPerUnit, 1.0);
   gl_Position = projectionMatrix * viewPos;
   vec4 biased = projectionMatrix * vec4(viewPos.xy, viewPos.z + uDepthBias, 1.0);
   gl_Position.z = biased.z / biased.w * gl_Position.w;
   vUv = vec2(mix(uUvRect.x, uUvRect.z, position.x), mix(uUvRect.y, uUvRect.w, position.y));
+  vPx = px;
 }
 `;
 
 const fragmentShader = /* glsl */ `
 uniform sampler2D uMap;
 uniform float uOpacity;
+uniform vec4 uQuad;
+uniform vec4 uUvRect;
+uniform vec4 uRot;         // RIG rotation: cos, sin, pivot (px from the foot pivot, y down); identity (1, 0, 0, 0)
 varying vec2 vUv;
+varying vec2 vPx;
 void main() {
-  vec4 color = texture2D(uMap, vUv) * uOpacity; // premultiplied
+  vec4 color;
+  if (uRot.y == 0.0 && uRot.x == 1.0) {
+    color = texture2D(uMap, vUv);
+  } else {
+    vec2 d = vPx - uRot.zw;
+    vec2 p = uRot.zw + vec2(uRot.x * d.x + uRot.y * d.y, -uRot.y * d.x + uRot.x * d.y); // inverse rotation
+    vec2 t = (p - uQuad.xy) / uQuad.zw;
+    color = texture2D(uMap, vec2(mix(uUvRect.x, uUvRect.z, t.x), mix(uUvRect.y, uUvRect.w, t.y)));
+    color *= step(0.0, t.x) * step(0.0, t.y) * (1.0 - step(1.0, t.x)) * (1.0 - step(1.0, t.y));
+  }
+  color *= uOpacity; // premultiplied
   if (color.a <= 0.0) discard;
   gl_FragColor = color;
 }
@@ -53,7 +74,9 @@ export function createSpriteLayerMaterial(options: SpriteMaterialOptions): THREE
     uniforms: {
       uMap: { value: null },
       uQuad: { value: new THREE.Vector4() },
+      uBox: { value: new THREE.Vector4() },
       uUvRect: { value: new THREE.Vector4() },
+      uRot: { value: new THREE.Vector4(1, 0, 0, 0) },
       uPixelsPerUnit: { value: options.pixelsPerUnit },
       uDepthBias: { value: options.depthBias },
       uOpacity: { value: 1 },

@@ -69,6 +69,9 @@ test.describe('GPU vs CPU reference parity', () => {
       const pose = resolvePose(assets.index, r.value, { clipId: 'walk', direction, frameIndex: 0 });
       expect(pose.layers.filter((l) => l.mirror).length, direction).toBeGreaterThanOrEqual(3);
     }
+    // RIG secondary motion (weapon_02 staff): the E walk case at t=250 (frame 2) draws a rotated layer.
+    const e = resolvePose(assets.index, r.value, { clipId: 'walk', direction: 'E', frameIndex: 2 });
+    expect(e.layers.find((l) => l.layer === 'weapon')?.rotation?.deg).toBe(-4);
   });
 
   test('negative controls: a missing layer or a broken depth test would be detected', async ({ page }) => {

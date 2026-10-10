@@ -67,6 +67,43 @@ export function blitOver(dst: RgbaImage, src: RgbaImage, dx: number, dy: number,
   }
 }
 
+/**
+ * Rotated blit (RIG secondary motion): the image placed at rect (dx, dy, srcRect size) is rotated by `deg` about
+ * `pivot` (dst coordinates, continuous; y down, positive = clockwise). Every destination pixel centre is mapped back
+ * through the inverse rotation and samples the nearest source texel (floor), which is exactly what the GPU shaders do
+ * (inverse-rotated fragment position, nearest filter), so parity holds up to float ties on texel edges.
+ */
+export function blitOverRotated(dst: RgbaImage, src: RgbaImage, dx: number, dy: number, srcRect: Rect, flipX: boolean, deg: number, pivot: { x: number; y: number }): void {
+  const a = (deg * Math.PI) / 180;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  const corners = [
+    [dx, dy],
+    [dx + srcRect.w, dy],
+    [dx, dy + srcRect.h],
+    [dx + srcRect.w, dy + srcRect.h],
+  ].map(([x, y]) => [pivot.x + c * ((x as number) - pivot.x) - s * ((y as number) - pivot.y), pivot.y + s * ((x as number) - pivot.x) + c * ((y as number) - pivot.y)] as const);
+  const x0 = Math.max(0, Math.floor(Math.min(...corners.map((p) => p[0]))));
+  const x1 = Math.min(dst.width, Math.ceil(Math.max(...corners.map((p) => p[0]))));
+  const y0 = Math.max(0, Math.floor(Math.min(...corners.map((p) => p[1]))));
+  const y1 = Math.min(dst.height, Math.ceil(Math.max(...corners.map((p) => p[1]))));
+  for (let ty = y0; ty < y1; ty++) {
+    for (let tx = x0; tx < x1; tx++) {
+      const px = tx + 0.5 - pivot.x;
+      const py = ty + 0.5 - pivot.y;
+      const u = pivot.x + c * px + s * py - dx; // inverse rotation
+      const v = pivot.y - s * px + c * py - dy;
+      if (u < 0 || v < 0 || u >= srcRect.w || v >= srcRect.h) continue;
+      const iu = Math.floor(u);
+      const sx = srcRect.x + (flipX ? srcRect.w - 1 - iu : iu);
+      const si = ((srcRect.y + Math.floor(v)) * src.width + sx) * 4;
+      const al = src.data[si + 3] as number;
+      if (al === 0) continue;
+      overPixel(dst.data, (ty * dst.width + tx) * 4, src.data[si] as number, src.data[si + 1] as number, src.data[si + 2] as number, al);
+    }
+  }
+}
+
 export function cropImage(src: RgbaImage, rect: Rect): RgbaImage {
   const out = createImage(rect.w, rect.h);
   for (let y = 0; y < rect.h; y++) {

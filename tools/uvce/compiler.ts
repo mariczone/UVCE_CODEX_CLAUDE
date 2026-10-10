@@ -251,6 +251,7 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
     const keys: string[] = [];
     let frames = 0;
     const compileFrame = async (frame: SourceFrame, attach: string, path: string): Promise<CompiledFrame | null> => {
+      if (!frame.file) return null; // HYBRID hold frame (handled by the caller) or already reported
       sourceFrames++;
       frames++;
       const v = validateSourcePng(await readFile(join(sourceDir, frame.file)), rig, `${path} (${frame.file})`, issues);
@@ -274,6 +275,7 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
     for (const [pi, part] of item.parts.entries()) {
       const base = `/items/${item.id}/parts/${pi}`;
       const compiled: CompiledPart = { layer: part.layer, attach: part.attach, representation: part.representation, allowMirror: part.allowMirror };
+      if (part.motion) compiled.motion = { ...part.motion };
       if (part.clips) {
         const clips: NonNullable<CompiledPart['clips']> = {};
         for (const [clipId, byDir] of Object.entries(part.clips)) {
@@ -281,6 +283,14 @@ export async function buildAssets(options: BuildOptions): Promise<{ manifest: Co
           for (const [dir, frameList] of Object.entries(byDir) as [Direction8, SourceFrame[]][]) {
             const list: CompiledFrame[] = [];
             for (const [fi, f] of frameList.entries()) {
+              const held = list.at(-1);
+              if (!f.file && part.representation === 'HYBRID' && held) {
+                // HYBRID hold: the previous keyframe's image and placement; a body frame keeps its own sockets.
+                const hold: CompiledFrame = { image: held.image, trim: { ...held.trim }, anchor: { ...held.anchor } };
+                if (f.sockets) hold.sockets = Object.fromEntries(Object.entries(f.sockets).sort(([a], [b]) => (a < b ? -1 : 1)));
+                list.push(hold);
+                continue;
+              }
               const c = await compileFrame(f, part.attach, `${base}/clips/${clipId}/${dir}/${fi}`);
               if (c) list.push(c);
             }

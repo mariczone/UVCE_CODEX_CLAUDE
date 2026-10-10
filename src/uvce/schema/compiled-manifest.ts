@@ -9,6 +9,7 @@ import {
   rectSchema,
   representationSchema,
   rigProfileSchema,
+  secondaryMotionSchema,
   sha256Schema,
   validateClip,
   validateRigProfile,
@@ -51,6 +52,11 @@ export const compiledPartSchema = z.strictObject({
   /** One frame per direction, reused for every clip/frame and moved by its socket. */
   static: z.partialRecord(directionSchema, compiledFrameSchema).optional(),
   allowMirror: z.boolean(),
+  /**
+   * RIG parts: static images moved and rotated per frame by secondary motion. HYBRID parts were compiled from sparse
+   * keyframes into full frame lists (held frames reuse the keyframe image) and render like FRAME.
+   */
+  motion: secondaryMotionSchema.optional(),
 });
 export type CompiledPart = z.infer<typeof compiledPartSchema>;
 
@@ -205,8 +211,16 @@ export function validateCompiledManifestSemantics(m: CompiledManifest): Issue[] 
     const layersSeen = new Set<string>();
     item.parts.forEach((part, pi) => {
       const pp = `${ip}/parts/${pi}`;
-      if (part.representation !== 'FRAME') {
-        err('part.representation', `${pp}/representation`, `${part.representation} is reserved; this runtime supports FRAME only`);
+      if (part.representation === 'PROCEDURAL') {
+        err('part.representation', `${pp}/representation`, 'PROCEDURAL is reserved; this runtime supports FRAME, RIG and HYBRID');
+      }
+      if (part.representation === 'RIG') {
+        if (!part.static || part.clips) err('part.rig', pp, 'RIG parts provide static images only (motion comes from the rig)');
+        if (!part.motion) err('part.rig', `${pp}/motion`, 'RIG parts need a motion spec');
+        const follow = part.motion?.follow ?? part.attach;
+        if (part.motion && !rig.sockets.includes(follow)) err('part.rig', `${pp}/motion/follow`, `follow socket "${follow}" is not a rig socket`);
+      } else if (part.motion) {
+        err('part.rig', `${pp}/motion`, `motion is only valid on RIG parts, not ${part.representation}`);
       }
       if (slot && !slot.layers.includes(part.layer)) {
         err('part.layer', `${pp}/layer`, `layer "${part.layer}" is not allowed in slot "${slot.name}"`);

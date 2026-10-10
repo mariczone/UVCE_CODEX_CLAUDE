@@ -393,3 +393,29 @@ Numbering follows the topics required by blueprint §21. Status of all: **accept
   converges to the server revision and slots), the registry byte-cap test, and `tests/e2e/net.spec.ts`. In the real
   app 100 players arrived over a lossy link: 27 deltas lost, all repaired by resyncs; with a 1.5 s prefetch lead
   0 pop-ins, without a lead 6 of 99 players appeared with layers still loading (that run).
+## ADR-19 RIG representation with secondary motion; HYBRID keyframes behind a flag (M4)
+
+- **RIG** = one image per direction (like a static FRAME part) plus `motion` (schema/common.ts). Per frame the part
+  trails a driver socket: offset `−gain · movement` over `lagFrames` (whole pixels, rounded half away from zero) and
+  rotation `degPerPx · movement.x` about the moved attach socket, both clamped (`core/secondary-motion.ts`). It is a
+  pure function of the clip's socket track, so pose keys, the frame cache and the planner need no change, and a
+  mirrored direction gets exactly the negated motion (its sockets are mirrored).
+- **Rendering a rotation, identically everywhere:** destination pixel centres are inverse-rotated and sample the nearest
+  texel. The CPU reference (`blitOverRotated`), the SHADER/FULL_CACHE composite shader and LAYERED all do this per
+  fragment. LAYERED first rotated the quad's vertices; the rasterizer's sub-pixel vertex snapping then shifted the
+  texture mapping and flipped nearest samples (19 px off, max delta 113, in the E walk parity case). Drawing the
+  rotated layer's axis-aligned box and inverse-rotating per fragment fixed it (0 px beyond ±3). Unrotated layers keep
+  the interpolated-UV path.
+- **Found by the mirror test:** `Math.round` is asymmetric at .5 (round(1.5) = 2, round(−1.5) = −1), so a mirrored
+  offset could land 1 px off (799 px mismatch in W vs mirrored E). Rounding half away from zero fixed it; a fully
+  mirrored character with RIG parts is again the pixel-exact mirror (144 composites).
+- **HYBRID (experimental, `experimental.hybrid: true` in the source manifest):** clip frames may omit `file`; such a
+  frame holds the previous keyframe's image (body frames still carry their own sockets, so equipment follows every
+  frame). The compiler expands HYBRID into full frame lists that reference the keyframe images: fewer source images,
+  no runtime change. Without the flag, or with a clip that does not start on a keyframe, validation fails.
+  PROCEDURAL stays reserved.
+- **Coverage:** the fixture's hair_02 back hair (trails the neck bob) and weapon_02 staff (lags and tilts up to 8°
+  behind the hand swing) are RIG parts on the parity scene's companion, so the GPU parity cases in LAYERED, SHADER,
+  FULL_CACHE and AUTO include them. Only the mixed look's reference hashes changed. Tests: `tests/unit/rig.test.ts`
+  (math, rotated blit, determinism, HYBRID compile and rejection), schema cases, the fully mirrored RIG look. A wrong
+  rotation direction in the CPU reference fails the GPU parity in all three modes (1,475 px).

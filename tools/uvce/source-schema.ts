@@ -11,6 +11,7 @@ import {
   directionSchema,
   idSchema,
   representationSchema,
+  secondaryMotionSchema,
   rigProfileSchema,
   validateClip,
   validateRigProfile,
@@ -25,8 +26,11 @@ export const SOURCE_MANIFEST_SCHEMA = 'uvce-source-manifest-v1';
 export const DEFAULT_LINEAR_MIP_LEVELS = 3;
 
 export const sourceFrameSchema = z.strictObject({
-  /** Path relative to the manifest directory. */
-  file: z.string().regex(/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*\.png$/, 'relative .png path ([A-Za-z0-9_-] segments, no "..")'),
+  /**
+   * Path relative to the manifest directory. Omitted only in HYBRID clips (experimental): the frame holds the
+   * previous keyframe's image (body frames still give their own sockets).
+   */
+  file: z.string().regex(/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*\.png$/, 'relative .png path ([A-Za-z0-9_-] segments, no "..")').optional(),
   /** Canonical-canvas point placed on the parent socket. Implicit (= foot pivot) for root-attached parts. */
   anchor: vec2Schema.optional(),
   sockets: z.record(idSchema, vec2Schema).optional(),
@@ -40,6 +44,8 @@ export const sourcePartSchema = z.strictObject({
   allowMirror: z.boolean(),
   clips: z.record(idSchema, z.partialRecord(directionSchema, z.array(sourceFrameSchema).min(1))).optional(),
   static: z.partialRecord(directionSchema, sourceFrameSchema).optional(),
+  /** RIG parts only: secondary motion (see schema/common.ts). */
+  motion: secondaryMotionSchema.optional(),
 });
 export type SourcePart = z.infer<typeof sourcePartSchema>;
 
@@ -62,6 +68,8 @@ export type SourceItem = z.infer<typeof sourceItemSchema>;
 export const sourceManifestSchema = z.strictObject({
   schemaVersion: z.literal(SOURCE_MANIFEST_SCHEMA),
   generator: z.strictObject({ name: z.string(), version: z.string(), seed: z.number().int(), artStatus: z.string() }).optional(),
+  /** Opt-in for experimental representations (Milestone 4: HYBRID). */
+  experimental: z.strictObject({ hybrid: z.boolean().optional() }).optional(),
   rigs: z.array(rigProfileSchema).min(1),
   clips: z.array(clipSchema).min(1),
   items: z.array(sourceItemSchema),
@@ -104,7 +112,15 @@ export function parseSourceManifest(json: unknown): ParseResult<SourceManifest> 
     if (!slot) err('item.slot', `${ip}/slot`, `unknown slot "${item.slot}"`);
     item.parts.forEach((part, pi) => {
       const pp = `${ip}/parts/${pi}`;
-      if (part.representation !== 'FRAME') err('part.representation', pp, `${part.representation} not supported by compiler v1`);
+      if (part.representation === 'PROCEDURAL') err('part.representation', pp, 'PROCEDURAL is reserved (not supported by the compiler)');
+      if (part.representation === 'HYBRID' && !m.experimental?.hybrid) err('part.representation', pp, 'HYBRID is experimental: set `experimental.hybrid: true` in the manifest');
+      if (part.representation === 'HYBRID' && !part.clips) err('part.hybrid', pp, 'HYBRID parts provide clips (sparse keyframes)');
+      if (part.representation === 'RIG') {
+        if (!part.static || part.clips) err('part.rig', pp, 'RIG parts provide static images only');
+        if (!part.motion) err('part.rig', `${pp}/motion`, 'RIG parts need a motion spec');
+        const follow = part.motion?.follow ?? part.attach;
+        if (part.motion && !rig.sockets.includes(follow)) err('part.rig', `${pp}/motion/follow`, `follow socket "${follow}" is not a rig socket`);
+      } else if (part.motion) err('part.rig', `${pp}/motion`, 'motion is only valid on RIG parts');
       if (slot && !slot.layers.includes(part.layer)) err('part.layer', pp, `layer "${part.layer}" not allowed in slot "${slot.name}"`);
       const isRoot = part.attach === ROOT_SOCKET;
       if (!isRoot && !rig.sockets.includes(part.attach)) err('part.attach', pp, `unknown socket "${part.attach}"`);
@@ -125,7 +141,11 @@ export function parseSourceManifest(json: unknown): ParseResult<SourceManifest> 
       const isDriver = part.layer === rig.socketDriverLayer;
       for (const { frame, clipId, direction, index } of sourcePartFrames(part)) {
         const fp = `${pp}/${clipId ? `clips/${clipId}/${direction}/${index}` : `static/${direction}`}`;
-        if (!isRoot && !frame.anchor) err('frame.anchor', fp, 'socket-attached frames need an explicit anchor');
+        if (!frame.file) {
+          if (part.representation !== 'HYBRID' || clipId === null) err('frame.file', fp, 'missing file (only HYBRID clip frames may hold the previous keyframe)');
+          else if (index === 0) err('frame.file', fp, 'the first frame of a HYBRID clip must be a keyframe');
+        }
+        if (!isRoot && !frame.anchor && frame.file) err('frame.anchor', fp, 'socket-attached frames need an explicit anchor');
         if (isDriver) {
           for (const s of rig.sockets) if (!frame.sockets?.[s]) err('frame.sockets', fp, `driver frame lacks socket "${s}"`);
         } else if (frame.sockets) err('frame.sockets', fp, 'only socket-driver frames may define sockets');

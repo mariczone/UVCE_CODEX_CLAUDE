@@ -14,6 +14,24 @@ export const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'expected #R
 export const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/, 'expected sha256 hex');
 export const REPRESENTATIONS = ['FRAME', 'RIG', 'HYBRID', 'PROCEDURAL'] as const;
 export const representationSchema = z.enum(REPRESENTATIONS);
+/**
+ * RIG secondary motion (Milestone 4): the part trails the movement of a driver socket over the last `lagFrames`
+ * clip frames, like hair or a cape lagging behind the body. Computed from the clip's own socket track, so it is a
+ * pure function of (appearance, clip, direction, frame): frame caches stay valid. See core/secondary-motion.ts.
+ */
+export const secondaryMotionSchema = z.strictObject({
+  /** Driver socket whose motion is followed (default: the part's attach socket). */
+  follow: idSchema.optional(),
+  lagFrames: z.number().int().min(1).max(4),
+  /** Offset in px per px of socket movement, opposite to the movement (trailing); rounded to whole pixels. */
+  gain: z.number().min(0).max(2),
+  maxOffsetPx: z.number().int().min(0).max(16),
+  /** Rotation about the attach socket in degrees per px of horizontal socket movement (opposite sign = trailing). */
+  degPerPx: z.number().min(0).max(10),
+  maxDeg: z.number().min(0).max(30),
+});
+export type SecondaryMotion = z.infer<typeof secondaryMotionSchema>;
+
 /** Reserved socket name: the foot pivot / ground contact. Always present, never declared. */
 export const ROOT_SOCKET = 'root';
 

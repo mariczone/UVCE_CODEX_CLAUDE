@@ -2,7 +2,7 @@ import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { heroAppearance } from '../../src/uvce/bench/crowd.ts';
+import { companionAppearance, heroAppearance } from '../../src/uvce/bench/crowd.ts';
 import { composePose } from '../../src/uvce/compositor/reference-compositor.ts';
 import type { RgbaImage } from '../../src/uvce/compositor/rgba.ts';
 import { resolveAppearance, withSlot } from '../../src/uvce/core/appearance-resolver.ts';
@@ -156,7 +156,8 @@ describe('fully mirrored character (every part allowMirror, W/SW/NW not drawn)',
     expect(warnings).toEqual([]);
     const { index, page } = await loadCompiledAssets(dir);
     expect(rigMirrorsDirections(index.manifest.rigs[0] as never)).toBe(true);
-    const looks = [heroAppearance(), withSlot(withSlot(withSlot(heroAppearance(), 'hat', 'hat_02'), 'armor', 'armor_02'), 'weapon', 'weapon_03')];
+    // The companion wears the RIG parts (hair_02 back hair, weapon_02 staff): rotation must mirror too.
+    const looks = [heroAppearance(), withSlot(withSlot(withSlot(heroAppearance(), 'hat', 'hat_02'), 'armor', 'armor_02'), 'weapon', 'weapon_03'), companionAppearance()];
     let compared = 0;
     for (const look of looks) {
       const r = resolveAppearance(index, look);
@@ -170,7 +171,7 @@ describe('fully mirrored character (every part allowMirror, W/SW/NW not drawn)',
             compared++;
           }
     }
-    expect(compared).toBe(96);
+    expect(compared).toBe(144);
   });
 
   it('warns when the socket driver is mirrored but the rig directions are not', async () => {
