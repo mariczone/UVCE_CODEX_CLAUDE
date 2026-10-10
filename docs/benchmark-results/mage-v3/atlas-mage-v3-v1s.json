@@ -1,0 +1,386 @@
+{
+  "manifestVersion": "m-c3741e64dae4249a",
+  "pages": [
+    {
+      "id": "page-shared-body_navy-core-0",
+      "width": 256,
+      "height": 184,
+      "mipLevels": 3,
+      "items": [
+        "body_base",
+        "body_navy"
+      ],
+      "imagePx": 13752,
+      "fill": 0.29194972826086957,
+      "gpuBytes": 250240,
+      "fileBytes": 25980
+    },
+    {
+      "id": "page-body_navy-0",
+      "width": 2048,
+      "height": 720,
+      "mipLevels": 3,
+      "items": [
+        "body_navy"
+      ],
+      "imagePx": 969675,
+      "fill": 0.6576029459635416,
+      "gpuBytes": 7833600,
+      "fileBytes": 1099512
+    },
+    {
+      "id": "page-core-0",
+      "width": 2048,
+      "height": 720,
+      "mipLevels": 3,
+      "items": [
+        "body_base"
+      ],
+      "imagePx": 969675,
+      "fill": 0.6576029459635416,
+      "gpuBytes": 7833600,
+      "fileBytes": 1096503
+    },
+    {
+      "id": "page-hair_01-0",
+      "width": 512,
+      "height": 224,
+      "mipLevels": 3,
+      "items": [
+        "hair_01"
+      ],
+      "imagePx": 49897,
+      "fill": 0.4350673130580357,
+      "gpuBytes": 609280,
+      "fileBytes": 61186
+    },
+    {
+      "id": "page-hair_bob-0",
+      "width": 256,
+      "height": 192,
+      "mipLevels": 3,
+      "items": [
+        "hair_bob"
+      ],
+      "imagePx": 22779,
+      "fill": 0.46343994140625,
+      "gpuBytes": 261120,
+      "fileBytes": 32857
+    },
+    {
+      "id": "page-hair_long_auburn-0",
+      "width": 512,
+      "height": 224,
+      "mipLevels": 3,
+      "items": [
+        "hair_long_auburn"
+      ],
+      "imagePx": 49897,
+      "fill": 0.4350673130580357,
+      "gpuBytes": 609280,
+      "fileBytes": 67891
+    },
+    {
+      "id": "page-hair_long_brown-0",
+      "width": 512,
+      "height": 224,
+      "mipLevels": 3,
+      "items": [
+        "hair_long_brown"
+      ],
+      "imagePx": 49897,
+      "fill": 0.4350673130580357,
+      "gpuBytes": 609280,
+      "fileBytes": 69094
+    },
+    {
+      "id": "page-hair_ponytail-0",
+      "width": 256,
+      "height": 256,
+      "mipLevels": 3,
+      "items": [
+        "hair_ponytail"
+      ],
+      "imagePx": 30679,
+      "fill": 0.4681243896484375,
+      "gpuBytes": 348160,
+      "fileBytes": 35989
+    },
+    {
+      "id": "page-hat_01-0",
+      "width": 256,
+      "height": 288,
+      "mipLevels": 3,
+      "items": [
+        "hat_01"
+      ],
+      "imagePx": 36543,
+      "fill": 0.4956461588541667,
+      "gpuBytes": 391680,
+      "fileBytes": 30917
+    },
+    {
+      "id": "page-hat_beret-0",
+      "width": 256,
+      "height": 120,
+      "mipLevels": 3,
+      "items": [
+        "hat_beret"
+      ],
+      "imagePx": 13361,
+      "fill": 0.4349283854166667,
+      "gpuBytes": 163200,
+      "fileBytes": 21573
+    },
+    {
+      "id": "page-head_base-0",
+      "width": 256,
+      "height": 128,
+      "mipLevels": 3,
+      "items": [
+        "head_base"
+      ],
+      "imagePx": 10876,
+      "fill": 0.3319091796875,
+      "gpuBytes": 174080,
+      "fileBytes": 17907
+    },
+    {
+      "id": "page-head_blink-0",
+      "width": 256,
+      "height": 128,
+      "mipLevels": 3,
+      "items": [
+        "head_blink"
+      ],
+      "imagePx": 10876,
+      "fill": 0.3319091796875,
+      "gpuBytes": 174080,
+      "fileBytes": 17662
+    },
+    {
+      "id": "page-head_face2-0",
+      "width": 256,
+      "height": 128,
+      "mipLevels": 3,
+      "items": [
+        "head_face2"
+      ],
+      "imagePx": 10876,
+      "fill": 0.3319091796875,
+      "gpuBytes": 174080,
+      "fileBytes": 18133
+    },
+    {
+      "id": "page-weapon_01-0",
+      "width": 256,
+      "height": 176,
+      "mipLevels": 3,
+      "items": [
+        "weapon_01"
+      ],
+      "imagePx": 19944,
+      "fill": 0.4426491477272727,
+      "gpuBytes": 239360,
+      "fileBytes": 21845
+    },
+    {
+      "id": "page-weapon_moon-0",
+      "width": 256,
+      "height": 168,
+      "mipLevels": 3,
+      "items": [
+        "weapon_moon"
+      ],
+      "imagePx": 20517,
+      "fill": 0.47705078125,
+      "gpuBytes": 228480,
+      "fileBytes": 19000
+    }
+  ],
+  "totals": {
+    "pages": 15,
+    "pagePx": 3745792,
+    "imagePx": 2279244,
+    "fill": 0.6084811970338984,
+    "gpuBytes": 19899520,
+    "fileBytes": 2636049,
+    "uniqueImages": 283
+  },
+  "items": [
+    {
+      "id": "body_base",
+      "slot": "body",
+      "pages": [
+        "page-core-0",
+        "page-shared-body_navy-core-0"
+      ],
+      "images": 128,
+      "imagePx": 983427,
+      "gpuBytesOfPages": 8083840
+    },
+    {
+      "id": "body_navy",
+      "slot": "body",
+      "pages": [
+        "page-body_navy-0",
+        "page-shared-body_navy-core-0"
+      ],
+      "images": 128,
+      "imagePx": 983427,
+      "gpuBytesOfPages": 8083840
+    },
+    {
+      "id": "head_base",
+      "slot": "head",
+      "pages": [
+        "page-head_base-0"
+      ],
+      "images": 5,
+      "imagePx": 10876,
+      "gpuBytesOfPages": 174080
+    },
+    {
+      "id": "head_face2",
+      "slot": "head",
+      "pages": [
+        "page-head_face2-0"
+      ],
+      "images": 5,
+      "imagePx": 10876,
+      "gpuBytesOfPages": 174080
+    },
+    {
+      "id": "head_blink",
+      "slot": "head",
+      "pages": [
+        "page-head_blink-0"
+      ],
+      "images": 5,
+      "imagePx": 10876,
+      "gpuBytesOfPages": 174080
+    },
+    {
+      "id": "hair_01",
+      "slot": "hair",
+      "pages": [
+        "page-hair_01-0"
+      ],
+      "images": 8,
+      "imagePx": 49897,
+      "gpuBytesOfPages": 609280
+    },
+    {
+      "id": "hair_long_brown",
+      "slot": "hair",
+      "pages": [
+        "page-hair_long_brown-0"
+      ],
+      "images": 8,
+      "imagePx": 49897,
+      "gpuBytesOfPages": 609280
+    },
+    {
+      "id": "hair_long_auburn",
+      "slot": "hair",
+      "pages": [
+        "page-hair_long_auburn-0"
+      ],
+      "images": 8,
+      "imagePx": 49897,
+      "gpuBytesOfPages": 609280
+    },
+    {
+      "id": "hair_bob",
+      "slot": "hair",
+      "pages": [
+        "page-hair_bob-0"
+      ],
+      "images": 8,
+      "imagePx": 22779,
+      "gpuBytesOfPages": 261120
+    },
+    {
+      "id": "hair_ponytail",
+      "slot": "hair",
+      "pages": [
+        "page-hair_ponytail-0"
+      ],
+      "images": 8,
+      "imagePx": 30679,
+      "gpuBytesOfPages": 348160
+    },
+    {
+      "id": "hat_01",
+      "slot": "hat",
+      "pages": [
+        "page-hat_01-0"
+      ],
+      "images": 5,
+      "imagePx": 36543,
+      "gpuBytesOfPages": 391680
+    },
+    {
+      "id": "hat_beret",
+      "slot": "hat",
+      "pages": [
+        "page-hat_beret-0"
+      ],
+      "images": 5,
+      "imagePx": 13361,
+      "gpuBytesOfPages": 163200
+    },
+    {
+      "id": "weapon_01",
+      "slot": "weapon",
+      "pages": [
+        "page-weapon_01-0"
+      ],
+      "images": 5,
+      "imagePx": 19944,
+      "gpuBytesOfPages": 239360
+    },
+    {
+      "id": "weapon_moon",
+      "slot": "weapon",
+      "pages": [
+        "page-weapon_moon-0"
+      ],
+      "images": 5,
+      "imagePx": 20517,
+      "gpuBytesOfPages": 228480
+    }
+  ],
+  "looks": {
+    "meanGpuBytes": 9010313.846153846,
+    "minGpuBytes": 8257920,
+    "maxGpuBytes": 9498240,
+    "heroGpuBytes": 9498240
+  },
+  "crowds": [
+    {
+      "count": 1,
+      "distinctLooks": 1,
+      "residentPages": 6,
+      "gpuBytes": 9498240
+    },
+    {
+      "count": 20,
+      "distinctLooks": 18,
+      "residentPages": 12,
+      "gpuBytes": 11717760
+    },
+    {
+      "count": 100,
+      "distinctLooks": 46,
+      "residentPages": 12,
+      "gpuBytes": 11717760
+    },
+    {
+      "count": 300,
+      "distinctLooks": 55,
+      "residentPages": 12,
+      "gpuBytes": 11717760
+    }
+  ]
+}

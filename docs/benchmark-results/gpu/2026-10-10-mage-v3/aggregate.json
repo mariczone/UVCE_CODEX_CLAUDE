@@ -1,0 +1,1038 @@
+{
+  "environment": {
+    "browser": "Chromium 141.0.7390.37",
+    "glVersion": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "glRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "glVendor": "Google Inc. (NVIDIA)",
+    "maxTextureSize": 16384,
+    "timerQuery": true,
+    "webgpuExposed": true,
+    "webgpuAdapter": "available",
+    "devicePixelRatio": 1.0000000298023224,
+    "pixelRatioUsed": 1.0000000298023224,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "hardwareConcurrency": 12,
+    "crossOriginIsolated": true,
+    "os": "win32 10.0.26200",
+    "cpu": "AMD Ryzen 5 5600 6-Core Processor               x12",
+    "memoryGiB": 127.9,
+    "node": "v24.18.0",
+    "commit": "514eb4119ee9d972f15537def0553c4a8a7e4436",
+    "workingTree": "dirty"
+  },
+  "method": "median over the sessions of each mode (ABBA order: 2 sessions per mode; each session = median of 2 runs, 10 s windows)",
+  "rows": [
+    {
+      "dataset": "fixture",
+      "mode": "LAYERED",
+      "count": 1,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 0.4335,
+      "cpuTotalP95": 0.5985,
+      "cpuTotalP50PerSession": [
+        0.472,
+        0.395
+      ],
+      "cpuUpdateP50": 0.11399999999999999,
+      "cpuSubmitP50": 0.3165,
+      "rafP50": 16.675,
+      "rafP95": 16.716,
+      "gpuTimerP50": 0.5605,
+      "drawCalls": 16,
+      "residentPages": 5,
+      "residentGpuMiB": 6.208,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 272.641,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "fixture",
+      "mode": "LAYERED",
+      "count": 20,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 1.0875,
+      "cpuTotalP95": 1.428,
+      "cpuTotalP50PerSession": [
+        1.07,
+        1.105
+      ],
+      "cpuUpdateP50": 0.20500000000000002,
+      "cpuSubmitP50": 0.884,
+      "rafP50": 16.675,
+      "rafP95": 16.7115,
+      "gpuTimerP50": 2.1255,
+      "drawCalls": 150,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "fixture",
+      "mode": "LAYERED",
+      "count": 100,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 3.6425,
+      "cpuTotalP95": 4.6455,
+      "cpuTotalP50PerSession": [
+        3.455,
+        3.83
+      ],
+      "cpuUpdateP50": 0.485,
+      "cpuSubmitP50": 3.154,
+      "rafP50": 16.675,
+      "rafP95": 16.7125,
+      "gpuTimerP50": 14.349499999999999,
+      "drawCalls": 715.5,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "fixture",
+      "mode": "LAYERED",
+      "count": 300,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 9.350000000000001,
+      "cpuTotalP95": 11.622499999999999,
+      "cpuTotalP50PerSession": [
+        8.865,
+        9.835
+      ],
+      "cpuUpdateP50": 1.011,
+      "cpuSubmitP50": 8.3295,
+      "rafP50": 16.675,
+      "rafP95": 16.7125,
+      "gpuTimerP50": 12.019,
+      "drawCalls": 2111.75,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "fixture",
+      "mode": "SHADER",
+      "count": 1,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 0.40149999999999997,
+      "cpuTotalP95": 0.5449999999999999,
+      "cpuTotalP50PerSession": [
+        0.43,
+        0.373
+      ],
+      "cpuUpdateP50": 0.114,
+      "cpuSubmitP50": 0.279,
+      "rafP50": 16.675,
+      "rafP95": 16.715,
+      "gpuTimerP50": 3.2385,
+      "drawCalls": 9,
+      "residentPages": 5,
+      "residentGpuMiB": 6.208,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 272.641,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 1
+    },
+    {
+      "dataset": "fixture",
+      "mode": "SHADER",
+      "count": 20,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 0.7925,
+      "cpuTotalP95": 1.0234999999999999,
+      "cpuTotalP50PerSession": [
+        0.863,
+        0.722
+      ],
+      "cpuUpdateP50": 0.24,
+      "cpuSubmitP50": 0.5509999999999999,
+      "rafP50": 16.675,
+      "rafP95": 16.7115,
+      "gpuTimerP50": 0.471,
+      "drawCalls": 47,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 20
+    },
+    {
+      "dataset": "fixture",
+      "mode": "SHADER",
+      "count": 100,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 2.021,
+      "cpuTotalP95": 2.5090000000000003,
+      "cpuTotalP50PerSession": [
+        2.102,
+        1.94
+      ],
+      "cpuUpdateP50": 0.5185,
+      "cpuSubmitP50": 1.495,
+      "rafP50": 16.675,
+      "rafP95": 16.713,
+      "gpuTimerP50": 7.8660000000000005,
+      "drawCalls": 207,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 100
+    },
+    {
+      "dataset": "fixture",
+      "mode": "SHADER",
+      "count": 300,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 4.84,
+      "cpuTotalP95": 6.0015,
+      "cpuTotalP50PerSession": [
+        5.08,
+        4.6
+      ],
+      "cpuUpdateP50": 1.0665,
+      "cpuSubmitP50": 3.7675,
+      "rafP50": 16.675,
+      "rafP95": 16.714,
+      "gpuTimerP50": 10.737,
+      "drawCalls": 606,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 300
+    },
+    {
+      "dataset": "fixture",
+      "mode": "FULL_CACHE",
+      "count": 1,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 0.4145,
+      "cpuTotalP95": 0.5515,
+      "cpuTotalP50PerSession": [
+        0.457,
+        0.372
+      ],
+      "cpuUpdateP50": 0.1175,
+      "cpuSubmitP50": 0.2885,
+      "rafP50": 16.675,
+      "rafP95": 16.717,
+      "gpuTimerP50": 2.6254999999999997,
+      "drawCalls": 9,
+      "residentPages": 5,
+      "residentGpuMiB": 6.208,
+      "frameCacheMiB": 21.333,
+      "downloadedKiB": 272.641,
+      "cacheHitRatio": 1,
+      "cachedCharacters": 1,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "fixture",
+      "mode": "FULL_CACHE",
+      "count": 20,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 0.831,
+      "cpuTotalP95": 1.1275,
+      "cpuTotalP50PerSession": [
+        0.815,
+        0.847
+      ],
+      "cpuUpdateP50": 0.4315,
+      "cpuSubmitP50": 0.40549999999999997,
+      "rafP50": 16.675,
+      "rafP95": 16.711,
+      "gpuTimerP50": 0.516,
+      "drawCalls": 47,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 64,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": 0.675,
+      "cachedCharacters": 17.5,
+      "compositedCharacters": 2.5
+    },
+    {
+      "dataset": "fixture",
+      "mode": "FULL_CACHE",
+      "count": 100,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 2.0124999999999997,
+      "cpuTotalP95": 2.4895,
+      "cpuTotalP50PerSession": [
+        1.89,
+        2.135
+      ],
+      "cpuUpdateP50": 0.8055,
+      "cpuSubmitP50": 1.2125,
+      "rafP50": 16.675,
+      "rafP95": 16.7085,
+      "gpuTimerP50": 9.2865,
+      "drawCalls": 207,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 64,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": 0.7375,
+      "cachedCharacters": 85.75,
+      "compositedCharacters": 14.25
+    },
+    {
+      "dataset": "fixture",
+      "mode": "FULL_CACHE",
+      "count": 300,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 5.24,
+      "cpuTotalP95": 6.225,
+      "cpuTotalP50PerSession": [
+        5.14,
+        5.34
+      ],
+      "cpuUpdateP50": 1.2574999999999998,
+      "cpuSubmitP50": 3.9210000000000003,
+      "rafP50": 16.6735,
+      "rafP95": 16.719,
+      "gpuTimerP50": 13.4815,
+      "drawCalls": 606,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 64,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": 0.0805,
+      "cachedCharacters": 24.25,
+      "compositedCharacters": 275.75
+    },
+    {
+      "dataset": "fixture",
+      "mode": "AUTO",
+      "count": 1,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 0.37,
+      "cpuTotalP95": 0.5115000000000001,
+      "cpuTotalP50PerSession": [
+        0.365,
+        0.375
+      ],
+      "cpuUpdateP50": 0.1065,
+      "cpuSubmitP50": 0.2585,
+      "rafP50": 16.675,
+      "rafP95": 16.7125,
+      "gpuTimerP50": 4.0065,
+      "drawCalls": 9,
+      "residentPages": 5,
+      "residentGpuMiB": 6.208,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 272.641,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 1
+    },
+    {
+      "dataset": "fixture",
+      "mode": "AUTO",
+      "count": 20,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 0.7675000000000001,
+      "cpuTotalP95": 1.0255,
+      "cpuTotalP50PerSession": [
+        0.74,
+        0.795
+      ],
+      "cpuUpdateP50": 0.23249999999999998,
+      "cpuSubmitP50": 0.5315000000000001,
+      "rafP50": 16.675,
+      "rafP95": 16.72,
+      "gpuTimerP50": 3.9724999999999997,
+      "drawCalls": 47,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 20
+    },
+    {
+      "dataset": "fixture",
+      "mode": "AUTO",
+      "count": 100,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 1.9615,
+      "cpuTotalP95": 2.424,
+      "cpuTotalP50PerSession": [
+        1.968,
+        1.955
+      ],
+      "cpuUpdateP50": 0.5265,
+      "cpuSubmitP50": 1.427,
+      "rafP50": 16.675,
+      "rafP95": 16.7115,
+      "gpuTimerP50": 10.977,
+      "drawCalls": 207,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 100
+    },
+    {
+      "dataset": "fixture",
+      "mode": "AUTO",
+      "count": 300,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 4.824,
+      "cpuTotalP95": 5.806,
+      "cpuTotalP50PerSession": [
+        4.813,
+        4.835
+      ],
+      "cpuUpdateP50": 1.1324999999999998,
+      "cpuSubmitP50": 3.693,
+      "rafP50": 16.675,
+      "rafP95": 16.7085,
+      "gpuTimerP50": 10.6815,
+      "drawCalls": 606,
+      "residentPages": 12,
+      "residentGpuMiB": 7.781,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 339.031,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 300
+    },
+    {
+      "dataset": "mage",
+      "mode": "LAYERED",
+      "count": 1,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 0.4195,
+      "cpuTotalP95": 0.5589999999999999,
+      "cpuTotalP50PerSession": [
+        0.432,
+        0.407
+      ],
+      "cpuUpdateP50": 0.119,
+      "cpuSubmitP50": 0.2975,
+      "rafP50": 16.675,
+      "rafP95": 16.7125,
+      "gpuTimerP50": 1.15,
+      "drawCalls": 15,
+      "residentPages": 5,
+      "residentGpuMiB": 14.77,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2319.043,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "mage",
+      "mode": "LAYERED",
+      "count": 20,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 1.056,
+      "cpuTotalP95": 1.335,
+      "cpuTotalP50PerSession": [
+        1.067,
+        1.045
+      ],
+      "cpuUpdateP50": 0.249,
+      "cpuSubmitP50": 0.806,
+      "rafP50": 16.675,
+      "rafP95": 16.7115,
+      "gpuTimerP50": 7.353999999999999,
+      "drawCalls": 134,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "mage",
+      "mode": "LAYERED",
+      "count": 100,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 3.4139999999999997,
+      "cpuTotalP95": 4.228999999999999,
+      "cpuTotalP50PerSession": [
+        3.3,
+        3.528
+      ],
+      "cpuUpdateP50": 0.435,
+      "cpuSubmitP50": 2.971,
+      "rafP50": 16.675,
+      "rafP95": 16.7125,
+      "gpuTimerP50": 13.5165,
+      "drawCalls": 655.25,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "mage",
+      "mode": "LAYERED",
+      "count": 300,
+      "sessions": [
+        "01-LAYERED",
+        "08-LAYERED"
+      ],
+      "cpuTotalP50": 9.1935,
+      "cpuTotalP95": 11.121500000000001,
+      "cpuTotalP50PerSession": [
+        9.345,
+        9.042
+      ],
+      "cpuUpdateP50": 0.921,
+      "cpuSubmitP50": 8.2685,
+      "rafP50": 16.675,
+      "rafP95": 16.715,
+      "gpuTimerP50": 12.7625,
+      "drawCalls": 1934.5,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "mage",
+      "mode": "SHADER",
+      "count": 1,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 0.404,
+      "cpuTotalP95": 0.5409999999999999,
+      "cpuTotalP50PerSession": [
+        0.42,
+        0.388
+      ],
+      "cpuUpdateP50": 0.119,
+      "cpuSubmitP50": 0.28,
+      "rafP50": 16.675,
+      "rafP95": 16.7135,
+      "gpuTimerP50": 4.25,
+      "drawCalls": 9,
+      "residentPages": 5,
+      "residentGpuMiB": 14.77,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2319.043,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 1
+    },
+    {
+      "dataset": "mage",
+      "mode": "SHADER",
+      "count": 20,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 0.7275,
+      "cpuTotalP95": 0.9465,
+      "cpuTotalP50PerSession": [
+        0.75,
+        0.705
+      ],
+      "cpuUpdateP50": 0.236,
+      "cpuSubmitP50": 0.4935,
+      "rafP50": 16.675,
+      "rafP95": 16.7115,
+      "gpuTimerP50": 4.382,
+      "drawCalls": 47,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 20
+    },
+    {
+      "dataset": "mage",
+      "mode": "SHADER",
+      "count": 100,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 1.8615,
+      "cpuTotalP95": 2.338,
+      "cpuTotalP50PerSession": [
+        1.915,
+        1.808
+      ],
+      "cpuUpdateP50": 0.43,
+      "cpuSubmitP50": 1.4245,
+      "rafP50": 16.675,
+      "rafP95": 16.715,
+      "gpuTimerP50": 11.773499999999999,
+      "drawCalls": 207,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 100
+    },
+    {
+      "dataset": "mage",
+      "mode": "SHADER",
+      "count": 300,
+      "sessions": [
+        "02-SHADER",
+        "07-SHADER"
+      ],
+      "cpuTotalP50": 4.7565,
+      "cpuTotalP95": 5.7085,
+      "cpuTotalP50PerSession": [
+        4.843,
+        4.67
+      ],
+      "cpuUpdateP50": 0.9115,
+      "cpuSubmitP50": 3.8335,
+      "rafP50": 16.675,
+      "rafP95": 16.716,
+      "gpuTimerP50": 7.785,
+      "drawCalls": 606,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 300
+    },
+    {
+      "dataset": "mage",
+      "mode": "FULL_CACHE",
+      "count": 1,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 0.3715,
+      "cpuTotalP95": 0.4905,
+      "cpuTotalP50PerSession": [
+        0.37,
+        0.373
+      ],
+      "cpuUpdateP50": 0.11,
+      "cpuSubmitP50": 0.2585,
+      "rafP50": 16.675,
+      "rafP95": 16.7095,
+      "gpuTimerP50": 1.582,
+      "drawCalls": 9,
+      "residentPages": 5,
+      "residentGpuMiB": 14.77,
+      "frameCacheMiB": 21.333,
+      "downloadedKiB": 2319.043,
+      "cacheHitRatio": 1,
+      "cachedCharacters": 1,
+      "compositedCharacters": 0
+    },
+    {
+      "dataset": "mage",
+      "mode": "FULL_CACHE",
+      "count": 20,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 0.794,
+      "cpuTotalP95": 1.0605,
+      "cpuTotalP50PerSession": [
+        0.78,
+        0.808
+      ],
+      "cpuUpdateP50": 0.3925,
+      "cpuSubmitP50": 0.411,
+      "rafP50": 16.675,
+      "rafP95": 16.7125,
+      "gpuTimerP50": 1.476,
+      "drawCalls": 47,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 64,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": 0.7,
+      "cachedCharacters": 17,
+      "compositedCharacters": 3
+    },
+    {
+      "dataset": "mage",
+      "mode": "FULL_CACHE",
+      "count": 100,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 1.9315,
+      "cpuTotalP95": 2.4375,
+      "cpuTotalP50PerSession": [
+        1.925,
+        1.938
+      ],
+      "cpuUpdateP50": 0.774,
+      "cpuSubmitP50": 1.1575,
+      "rafP50": 16.675,
+      "rafP95": 16.7185,
+      "gpuTimerP50": 12.726500000000001,
+      "drawCalls": 207,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 64,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": 0.785,
+      "cachedCharacters": 88,
+      "compositedCharacters": 12
+    },
+    {
+      "dataset": "mage",
+      "mode": "FULL_CACHE",
+      "count": 300,
+      "sessions": [
+        "03-FULL_CACHE",
+        "06-FULL_CACHE"
+      ],
+      "cpuTotalP50": 5.1285,
+      "cpuTotalP95": 6.1785,
+      "cpuTotalP50PerSession": [
+        5.137,
+        5.12
+      ],
+      "cpuUpdateP50": 1.13,
+      "cpuSubmitP50": 3.9025,
+      "rafP50": 16.675,
+      "rafP95": 16.7175,
+      "gpuTimerP50": 13.599,
+      "drawCalls": 606,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 64,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": 0.045,
+      "cachedCharacters": 13.5,
+      "compositedCharacters": 286.5
+    },
+    {
+      "dataset": "mage",
+      "mode": "AUTO",
+      "count": 1,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 0.4075,
+      "cpuTotalP95": 0.5509999999999999,
+      "cpuTotalP50PerSession": [
+        0.44,
+        0.375
+      ],
+      "cpuUpdateP50": 0.121,
+      "cpuSubmitP50": 0.28,
+      "rafP50": 16.675,
+      "rafP95": 16.7185,
+      "gpuTimerP50": 1.064,
+      "drawCalls": 9,
+      "residentPages": 5,
+      "residentGpuMiB": 14.77,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2319.043,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 1
+    },
+    {
+      "dataset": "mage",
+      "mode": "AUTO",
+      "count": 20,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 0.791,
+      "cpuTotalP95": 1.0185,
+      "cpuTotalP50PerSession": [
+        0.787,
+        0.795
+      ],
+      "cpuUpdateP50": 0.27749999999999997,
+      "cpuSubmitP50": 0.5125,
+      "rafP50": 16.6735,
+      "rafP95": 16.7225,
+      "gpuTimerP50": 1.7965,
+      "drawCalls": 47,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 20
+    },
+    {
+      "dataset": "mage",
+      "mode": "AUTO",
+      "count": 100,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 1.9739999999999998,
+      "cpuTotalP95": 2.4475,
+      "cpuTotalP50PerSession": [
+        1.938,
+        2.01
+      ],
+      "cpuUpdateP50": 0.511,
+      "cpuSubmitP50": 1.4565000000000001,
+      "rafP50": 16.675,
+      "rafP95": 16.72,
+      "gpuTimerP50": 5.4555,
+      "drawCalls": 207,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 100
+    },
+    {
+      "dataset": "mage",
+      "mode": "AUTO",
+      "count": 300,
+      "sessions": [
+        "04-AUTO",
+        "05-AUTO"
+      ],
+      "cpuTotalP50": 4.693,
+      "cpuTotalP95": 5.6575,
+      "cpuTotalP50PerSession": [
+        4.718,
+        4.668
+      ],
+      "cpuUpdateP50": 1.037,
+      "cpuSubmitP50": 3.6385,
+      "rafP50": 16.675,
+      "rafP95": 16.716,
+      "gpuTimerP50": 13.846499999999999,
+      "drawCalls": 606,
+      "residentPages": 11,
+      "residentGpuMiB": 16.895,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 2559.672,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 300
+    },
+    {
+      "dataset": "mage-v1s",
+      "mode": "SHADER",
+      "count": 1,
+      "sessions": [
+        "01-SHADER",
+        "02-SHADER"
+      ],
+      "cpuTotalP50": 0.4165,
+      "cpuTotalP95": 0.5609999999999999,
+      "cpuTotalP50PerSession": [
+        0.405,
+        0.428
+      ],
+      "cpuUpdateP50": 0.1175,
+      "cpuSubmitP50": 0.2935,
+      "rafP50": 16.675,
+      "rafP95": 16.7145,
+      "gpuTimerP50": 3.9585,
+      "drawCalls": 9,
+      "residentPages": 6,
+      "residentGpuMiB": 9.093,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 1254.934,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 1
+    },
+    {
+      "dataset": "mage-v1s",
+      "mode": "SHADER",
+      "count": 20,
+      "sessions": [
+        "01-SHADER",
+        "02-SHADER"
+      ],
+      "cpuTotalP50": 0.8,
+      "cpuTotalP95": 1.045,
+      "cpuTotalP50PerSession": [
+        0.782,
+        0.818
+      ],
+      "cpuUpdateP50": 0.265,
+      "cpuSubmitP50": 0.535,
+      "rafP50": 16.675,
+      "rafP95": 16.7165,
+      "gpuTimerP50": 6.274,
+      "drawCalls": 47,
+      "residentPages": 12,
+      "residentGpuMiB": 11.218,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 1495.563,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 20
+    },
+    {
+      "dataset": "mage-v1s",
+      "mode": "SHADER",
+      "count": 100,
+      "sessions": [
+        "01-SHADER",
+        "02-SHADER"
+      ],
+      "cpuTotalP50": 1.8315000000000001,
+      "cpuTotalP95": 2.377,
+      "cpuTotalP50PerSession": [
+        1.983,
+        1.68
+      ],
+      "cpuUpdateP50": 0.45499999999999996,
+      "cpuSubmitP50": 1.3635000000000002,
+      "rafP50": 16.675,
+      "rafP95": 16.7165,
+      "gpuTimerP50": 15.398,
+      "drawCalls": 207,
+      "residentPages": 12,
+      "residentGpuMiB": 11.218,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 1495.563,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 100
+    },
+    {
+      "dataset": "mage-v1s",
+      "mode": "SHADER",
+      "count": 300,
+      "sessions": [
+        "01-SHADER",
+        "02-SHADER"
+      ],
+      "cpuTotalP50": 4.577500000000001,
+      "cpuTotalP95": 5.596,
+      "cpuTotalP50PerSession": [
+        5.032,
+        4.123
+      ],
+      "cpuUpdateP50": 0.9165,
+      "cpuSubmitP50": 3.6525,
+      "rafP50": 16.6735,
+      "rafP95": 16.7175,
+      "gpuTimerP50": 14.36,
+      "drawCalls": 573.5,
+      "residentPages": 12,
+      "residentGpuMiB": 11.218,
+      "frameCacheMiB": 0,
+      "downloadedKiB": 1495.563,
+      "cacheHitRatio": null,
+      "cachedCharacters": 0,
+      "compositedCharacters": 287.25
+    }
+  ]
+}

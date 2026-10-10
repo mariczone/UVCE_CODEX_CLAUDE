@@ -1,0 +1,134 @@
+{
+  "manifestVersion": "m-337bda7075f854bc",
+  "encoder": "ktx2-encoder 0.6.0 (Basis Universal WASM)",
+  "presets": {
+    "etc1s": "ETC1S qualityLevel 128, compressionLevel 2, mips",
+    "uastc": "UASTC level 2 + RDO 1.0 + Zstandard, mips"
+  },
+  "total": {
+    "png": 2626214,
+    "etc1s": 526253,
+    "uastc": 1420976,
+    "rgba8Mips": 18065500,
+    "compressedGpu": 4516375
+  },
+  "rows": [
+    {
+      "page": "page-core-0",
+      "size": "2048x1288",
+      "pngBytes": 2212160,
+      "ktx2Etc1sBytes": 376764,
+      "ktx2UastcRdoZstdBytes": 1147987,
+      "gpuRgba8FullChain": 14068044,
+      "gpuCompressedFullChain": 3517011
+    },
+    {
+      "page": "page-hair_01-0",
+      "size": "512x224",
+      "pngBytes": 61186,
+      "ktx2Etc1sBytes": 20593,
+      "ktx2UastcRdoZstdBytes": 37982,
+      "gpuRgba8FullChain": 611644,
+      "gpuCompressedFullChain": 152911
+    },
+    {
+      "page": "page-hair_bob-0",
+      "size": "256x192",
+      "pngBytes": 32857,
+      "ktx2Etc1sBytes": 11584,
+      "ktx2UastcRdoZstdBytes": 22001,
+      "gpuRgba8FullChain": 262140,
+      "gpuCompressedFullChain": 65535
+    },
+    {
+      "page": "page-hair_long_auburn-0",
+      "size": "512x224",
+      "pngBytes": 67891,
+      "ktx2Etc1sBytes": 21979,
+      "ktx2UastcRdoZstdBytes": 40478,
+      "gpuRgba8FullChain": 611644,
+      "gpuCompressedFullChain": 152911
+    },
+    {
+      "page": "page-hair_long_brown-0",
+      "size": "512x224",
+      "pngBytes": 69094,
+      "ktx2Etc1sBytes": 21992,
+      "ktx2UastcRdoZstdBytes": 40788,
+      "gpuRgba8FullChain": 611644,
+      "gpuCompressedFullChain": 152911
+    },
+    {
+      "page": "page-hair_ponytail-0",
+      "size": "256x256",
+      "pngBytes": 35989,
+      "ktx2Etc1sBytes": 13631,
+      "ktx2UastcRdoZstdBytes": 24265,
+      "gpuRgba8FullChain": 349524,
+      "gpuCompressedFullChain": 87381
+    },
+    {
+      "page": "page-hat_01-0",
+      "size": "256x288",
+      "pngBytes": 30917,
+      "ktx2Etc1sBytes": 11682,
+      "ktx2UastcRdoZstdBytes": 22757,
+      "gpuRgba8FullChain": 393204,
+      "gpuCompressedFullChain": 98301
+    },
+    {
+      "page": "page-hat_beret-0",
+      "size": "256x120",
+      "pngBytes": 21573,
+      "ktx2Etc1sBytes": 7278,
+      "ktx2UastcRdoZstdBytes": 14329,
+      "gpuRgba8FullChain": 163772,
+      "gpuCompressedFullChain": 40943
+    },
+    {
+      "page": "page-head_base-0",
+      "size": "256x128",
+      "pngBytes": 17907,
+      "ktx2Etc1sBytes": 6863,
+      "ktx2UastcRdoZstdBytes": 13279,
+      "gpuRgba8FullChain": 174764,
+      "gpuCompressedFullChain": 43691
+    },
+    {
+      "page": "page-head_blink-0",
+      "size": "256x128",
+      "pngBytes": 17662,
+      "ktx2Etc1sBytes": 6772,
+      "ktx2UastcRdoZstdBytes": 13101,
+      "gpuRgba8FullChain": 174764,
+      "gpuCompressedFullChain": 43691
+    },
+    {
+      "page": "page-head_face2-0",
+      "size": "256x128",
+      "pngBytes": 18133,
+      "ktx2Etc1sBytes": 7159,
+      "ktx2UastcRdoZstdBytes": 13480,
+      "gpuRgba8FullChain": 174764,
+      "gpuCompressedFullChain": 43691
+    },
+    {
+      "page": "page-weapon_01-0",
+      "size": "256x176",
+      "pngBytes": 21845,
+      "ktx2Etc1sBytes": 10213,
+      "ktx2UastcRdoZstdBytes": 15405,
+      "gpuRgba8FullChain": 240268,
+      "gpuCompressedFullChain": 60067
+    },
+    {
+      "page": "page-weapon_moon-0",
+      "size": "256x168",
+      "pngBytes": 19000,
+      "ktx2Etc1sBytes": 9743,
+      "ktx2UastcRdoZstdBytes": 15124,
+      "gpuRgba8FullChain": 229324,
+      "gpuCompressedFullChain": 57331
+    }
+  ]
+}

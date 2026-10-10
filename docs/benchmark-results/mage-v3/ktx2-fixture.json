@@ -1,0 +1,125 @@
+{
+  "manifestVersion": "m-651da23056a1eb54",
+  "encoder": "ktx2-encoder 0.6.0 (Basis Universal WASM)",
+  "presets": {
+    "etc1s": "ETC1S qualityLevel 128, compressionLevel 2, mips",
+    "uastc": "UASTC level 2 + RDO 1.0 + Zstandard, mips"
+  },
+  "total": {
+    "png": 329965,
+    "etc1s": 225520,
+    "uastc": 264078,
+    "rgba8Mips": 8158744,
+    "compressedGpu": 2039686
+  },
+  "rows": [
+    {
+      "page": "page-armor_01-0",
+      "size": "256x152",
+      "pngBytes": 4320,
+      "ktx2Etc1sBytes": 7737,
+      "ktx2UastcRdoZstdBytes": 10212,
+      "gpuRgba8FullChain": 207468,
+      "gpuCompressedFullChain": 51867
+    },
+    {
+      "page": "page-armor_02-0",
+      "size": "256x224",
+      "pngBytes": 10246,
+      "ktx2Etc1sBytes": 9272,
+      "ktx2UastcRdoZstdBytes": 12846,
+      "gpuRgba8FullChain": 305820,
+      "gpuCompressedFullChain": 76455
+    },
+    {
+      "page": "page-armor_03-0",
+      "size": "256x168",
+      "pngBytes": 7365,
+      "ktx2Etc1sBytes": 6586,
+      "ktx2UastcRdoZstdBytes": 10723,
+      "gpuRgba8FullChain": 229324,
+      "gpuCompressedFullChain": 57331
+    },
+    {
+      "page": "page-core-0",
+      "size": "2048x528",
+      "pngBytes": 231219,
+      "ktx2Etc1sBytes": 144441,
+      "ktx2UastcRdoZstdBytes": 149549,
+      "gpuRgba8FullChain": 5767004,
+      "gpuCompressedFullChain": 1441751
+    },
+    {
+      "page": "page-hair_01-0",
+      "size": "256x136",
+      "pngBytes": 8454,
+      "ktx2Etc1sBytes": 6678,
+      "ktx2UastcRdoZstdBytes": 9567,
+      "gpuRgba8FullChain": 185644,
+      "gpuCompressedFullChain": 46411
+    },
+    {
+      "page": "page-hair_02-0",
+      "size": "256x176",
+      "pngBytes": 8267,
+      "ktx2Etc1sBytes": 8397,
+      "ktx2UastcRdoZstdBytes": 12642,
+      "gpuRgba8FullChain": 240268,
+      "gpuCompressedFullChain": 60067
+    },
+    {
+      "page": "page-hat_01-0",
+      "size": "128x128",
+      "pngBytes": 3297,
+      "ktx2Etc1sBytes": 3567,
+      "ktx2UastcRdoZstdBytes": 4350,
+      "gpuRgba8FullChain": 87380,
+      "gpuCompressedFullChain": 21845
+    },
+    {
+      "page": "page-hat_02-0",
+      "size": "256x200",
+      "pngBytes": 13456,
+      "ktx2Etc1sBytes": 7710,
+      "ktx2UastcRdoZstdBytes": 7116,
+      "gpuRgba8FullChain": 273020,
+      "gpuCompressedFullChain": 68255
+    },
+    {
+      "page": "page-hat_03-0",
+      "size": "256x120",
+      "pngBytes": 4823,
+      "ktx2Etc1sBytes": 4190,
+      "ktx2UastcRdoZstdBytes": 4359,
+      "gpuRgba8FullChain": 163772,
+      "gpuCompressedFullChain": 40943
+    },
+    {
+      "page": "page-weapon_01-0",
+      "size": "256x192",
+      "pngBytes": 14691,
+      "ktx2Etc1sBytes": 9643,
+      "ktx2UastcRdoZstdBytes": 15493,
+      "gpuRgba8FullChain": 262140,
+      "gpuCompressedFullChain": 65535
+    },
+    {
+      "page": "page-weapon_02-0",
+      "size": "256x128",
+      "pngBytes": 10530,
+      "ktx2Etc1sBytes": 7809,
+      "ktx2UastcRdoZstdBytes": 12035,
+      "gpuRgba8FullChain": 174764,
+      "gpuCompressedFullChain": 43691
+    },
+    {
+      "page": "page-weapon_03-0",
+      "size": "256x192",
+      "pngBytes": 13297,
+      "ktx2Etc1sBytes": 9490,
+      "ktx2UastcRdoZstdBytes": 15186,
+      "gpuRgba8FullChain": 262140,
+      "gpuCompressedFullChain": 65535
+    }
+  ]
+}

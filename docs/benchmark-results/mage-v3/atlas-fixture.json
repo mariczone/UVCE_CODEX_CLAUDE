@@ -1,0 +1,335 @@
+{
+  "manifestVersion": "m-651da23056a1eb54",
+  "pages": [
+    {
+      "id": "page-armor_01-0",
+      "width": 256,
+      "height": 152,
+      "mipLevels": 3,
+      "items": [
+        "armor_01"
+      ],
+      "imagePx": 17284,
+      "fill": 0.44418174342105265,
+      "gpuBytes": 206720,
+      "fileBytes": 4320
+    },
+    {
+      "id": "page-armor_02-0",
+      "width": 256,
+      "height": 224,
+      "mipLevels": 3,
+      "items": [
+        "armor_02"
+      ],
+      "imagePx": 22774,
+      "fill": 0.3971470424107143,
+      "gpuBytes": 304640,
+      "fileBytes": 10246
+    },
+    {
+      "id": "page-armor_03-0",
+      "width": 256,
+      "height": 168,
+      "mipLevels": 3,
+      "items": [
+        "armor_03"
+      ],
+      "imagePx": 15300,
+      "fill": 0.35574776785714285,
+      "gpuBytes": 228480,
+      "fileBytes": 7365
+    },
+    {
+      "id": "page-core-0",
+      "width": 2048,
+      "height": 528,
+      "mipLevels": 3,
+      "items": [
+        "body_base",
+        "head_base"
+      ],
+      "imagePx": 687288,
+      "fill": 0.6355868252840909,
+      "gpuBytes": 5744640,
+      "fileBytes": 231219
+    },
+    {
+      "id": "page-hair_01-0",
+      "width": 256,
+      "height": 136,
+      "mipLevels": 3,
+      "items": [
+        "hair_01"
+      ],
+      "imagePx": 15464,
+      "fill": 0.44416360294117646,
+      "gpuBytes": 184960,
+      "fileBytes": 8454
+    },
+    {
+      "id": "page-hair_02-0",
+      "width": 256,
+      "height": 176,
+      "mipLevels": 3,
+      "items": [
+        "hair_02"
+      ],
+      "imagePx": 22406,
+      "fill": 0.4972922585227273,
+      "gpuBytes": 239360,
+      "fileBytes": 8267
+    },
+    {
+      "id": "page-hat_01-0",
+      "width": 128,
+      "height": 128,
+      "mipLevels": 3,
+      "items": [
+        "hat_01"
+      ],
+      "imagePx": 6300,
+      "fill": 0.384521484375,
+      "gpuBytes": 87040,
+      "fileBytes": 3297
+    },
+    {
+      "id": "page-hat_02-0",
+      "width": 256,
+      "height": 200,
+      "mipLevels": 3,
+      "items": [
+        "hat_02"
+      ],
+      "imagePx": 27280,
+      "fill": 0.5328125,
+      "gpuBytes": 272000,
+      "fileBytes": 13456
+    },
+    {
+      "id": "page-hat_03-0",
+      "width": 256,
+      "height": 120,
+      "mipLevels": 3,
+      "items": [
+        "hat_03"
+      ],
+      "imagePx": 10584,
+      "fill": 0.34453125,
+      "gpuBytes": 163200,
+      "fileBytes": 4823
+    },
+    {
+      "id": "page-weapon_01-0",
+      "width": 256,
+      "height": 192,
+      "mipLevels": 3,
+      "items": [
+        "weapon_01"
+      ],
+      "imagePx": 19252,
+      "fill": 0.3916829427083333,
+      "gpuBytes": 261120,
+      "fileBytes": 14691
+    },
+    {
+      "id": "page-weapon_02-0",
+      "width": 256,
+      "height": 128,
+      "mipLevels": 3,
+      "items": [
+        "weapon_02"
+      ],
+      "imagePx": 17096,
+      "fill": 0.521728515625,
+      "gpuBytes": 174080,
+      "fileBytes": 10530
+    },
+    {
+      "id": "page-weapon_03-0",
+      "width": 256,
+      "height": 192,
+      "mipLevels": 3,
+      "items": [
+        "weapon_03"
+      ],
+      "imagePx": 22245,
+      "fill": 0.45257568359375,
+      "gpuBytes": 261120,
+      "fileBytes": 13297
+    }
+  ],
+  "totals": {
+    "pages": 12,
+    "pagePx": 1529856,
+    "imagePx": 883273,
+    "fill": 0.5773569538570951,
+    "gpuBytes": 8127360,
+    "fileBytes": 329965,
+    "uniqueImages": 188
+  },
+  "items": [
+    {
+      "id": "body_base",
+      "slot": "body",
+      "pages": [
+        "page-core-0"
+      ],
+      "images": 110,
+      "imagePx": 665904,
+      "gpuBytesOfPages": 5744640
+    },
+    {
+      "id": "head_base",
+      "slot": "head",
+      "pages": [
+        "page-core-0"
+      ],
+      "images": 8,
+      "imagePx": 21384,
+      "gpuBytesOfPages": 5744640
+    },
+    {
+      "id": "hair_01",
+      "slot": "hair",
+      "pages": [
+        "page-hair_01-0"
+      ],
+      "images": 7,
+      "imagePx": 15464,
+      "gpuBytesOfPages": 184960
+    },
+    {
+      "id": "hair_02",
+      "slot": "hair",
+      "pages": [
+        "page-hair_02-0"
+      ],
+      "images": 6,
+      "imagePx": 22406,
+      "gpuBytesOfPages": 239360
+    },
+    {
+      "id": "hat_01",
+      "slot": "hat",
+      "pages": [
+        "page-hat_01-0"
+      ],
+      "images": 3,
+      "imagePx": 6300,
+      "gpuBytesOfPages": 87040
+    },
+    {
+      "id": "hat_02",
+      "slot": "hat",
+      "pages": [
+        "page-hat_02-0"
+      ],
+      "images": 8,
+      "imagePx": 27280,
+      "gpuBytesOfPages": 272000
+    },
+    {
+      "id": "hat_03",
+      "slot": "hat",
+      "pages": [
+        "page-hat_03-0"
+      ],
+      "images": 4,
+      "imagePx": 10584,
+      "gpuBytesOfPages": 163200
+    },
+    {
+      "id": "armor_01",
+      "slot": "armor",
+      "pages": [
+        "page-armor_01-0"
+      ],
+      "images": 8,
+      "imagePx": 17284,
+      "gpuBytesOfPages": 206720
+    },
+    {
+      "id": "armor_02",
+      "slot": "armor",
+      "pages": [
+        "page-armor_02-0"
+      ],
+      "images": 8,
+      "imagePx": 22774,
+      "gpuBytesOfPages": 304640
+    },
+    {
+      "id": "armor_03",
+      "slot": "armor",
+      "pages": [
+        "page-armor_03-0"
+      ],
+      "images": 5,
+      "imagePx": 15300,
+      "gpuBytesOfPages": 228480
+    },
+    {
+      "id": "weapon_01",
+      "slot": "weapon",
+      "pages": [
+        "page-weapon_01-0"
+      ],
+      "images": 8,
+      "imagePx": 19252,
+      "gpuBytesOfPages": 261120
+    },
+    {
+      "id": "weapon_02",
+      "slot": "weapon",
+      "pages": [
+        "page-weapon_02-0"
+      ],
+      "images": 5,
+      "imagePx": 17096,
+      "gpuBytesOfPages": 174080
+    },
+    {
+      "id": "weapon_03",
+      "slot": "weapon",
+      "pages": [
+        "page-weapon_03-0"
+      ],
+      "images": 8,
+      "imagePx": 22245,
+      "gpuBytesOfPages": 261120
+    }
+  ],
+  "looks": {
+    "meanGpuBytes": 6382084.280936454,
+    "minGpuBytes": 5744640,
+    "maxGpuBytes": 6821760,
+    "heroGpuBytes": 6484480
+  },
+  "crowds": [
+    {
+      "count": 1,
+      "distinctLooks": 1,
+      "residentPages": 5,
+      "gpuBytes": 6484480
+    },
+    {
+      "count": 20,
+      "distinctLooks": 17,
+      "residentPages": 12,
+      "gpuBytes": 8127360
+    },
+    {
+      "count": 100,
+      "distinctLooks": 75,
+      "residentPages": 12,
+      "gpuBytes": 8127360
+    },
+    {
+      "count": 300,
+      "distinctLooks": 150,
+      "residentPages": 12,
+      "gpuBytes": 8127360
+    }
+  ]
+}

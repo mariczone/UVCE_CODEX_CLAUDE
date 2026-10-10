@@ -1,0 +1,1736 @@
+[
+  {
+    "variant": "V0 as delivered (body_base + body_navy share core)",
+    "totals": {
+      "pages": 13,
+      "pagePx": 3387392,
+      "imagePx": 2279244,
+      "fill": 0.672861009295647,
+      "gpuBytes": 17995520,
+      "fileBytes": 2626214,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 14939913.846153846,
+      "minGpuBytes": 14187520,
+      "maxGpuBytes": 15427840,
+      "heroGpuBytes": 15427840
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 5,
+        "gpuBytes": 15427840
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 11,
+        "gpuBytes": 17647360
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 11,
+        "gpuBytes": 17647360
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 11,
+        "gpuBytes": 17647360
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-core-0",
+        "size": "2048x1288",
+        "fill": 0.7404216505725931,
+        "gpuBytes": 14013440
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x192",
+        "fill": 0.46343994140625,
+        "gpuBytes": 261120
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x256",
+        "fill": 0.4681243896484375,
+        "gpuBytes": 348160
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x288",
+        "fill": 0.4956461588541667,
+        "gpuBytes": 391680
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x120",
+        "fill": 0.4349283854166667,
+        "gpuBytes": 163200
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x176",
+        "fill": 0.4426491477272727,
+        "gpuBytes": 239360
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x168",
+        "fill": 0.47705078125,
+        "gpuBytes": 228480
+      }
+    ]
+  },
+  {
+    "variant": "V1 body_navy on its own pages",
+    "totals": {
+      "pages": 14,
+      "pagePx": 3698688,
+      "imagePx": 2279244,
+      "fill": 0.6162304038621262,
+      "gpuBytes": 19649280,
+      "fileBytes": 2636598,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 16593673.846153846,
+      "minGpuBytes": 15841280,
+      "maxGpuBytes": 17081600,
+      "heroGpuBytes": 17081600
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 17081600
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 19301120
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 19301120
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 19301120
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6669291178385417,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x192",
+        "fill": 0.46343994140625,
+        "gpuBytes": 261120
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x256",
+        "fill": 0.4681243896484375,
+        "gpuBytes": 348160
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x288",
+        "fill": 0.4956461588541667,
+        "gpuBytes": 391680
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x120",
+        "fill": 0.4349283854166667,
+        "gpuBytes": 163200
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x176",
+        "fill": 0.4426491477272727,
+        "gpuBytes": 239360
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x168",
+        "fill": 0.47705078125,
+        "gpuBytes": 228480
+      }
+    ]
+  },
+  {
+    "variant": "V2 V1 + one page group per accessory slot",
+    "totals": {
+      "pages": 6,
+      "pagePx": 3520512,
+      "imagePx": 2279244,
+      "fill": 0.6474183300610821,
+      "gpuBytes": 18702720,
+      "fileBytes": 2633398,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 18113089.49832776,
+      "minGpuBytes": 16004480,
+      "maxGpuBytes": 18702720,
+      "heroGpuBytes": 18702720
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 18702720
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 6,
+        "gpuBytes": 18702720
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 6,
+        "gpuBytes": 18702720
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 6,
+        "gpuBytes": 18702720
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-acc_hair-0",
+        "size": "1024x328",
+        "fill": 0.6048405344893293,
+        "gpuBytes": 1784320
+      },
+      {
+        "id": "page-acc_hat-0",
+        "size": "512x160",
+        "fill": 0.6091796875,
+        "gpuBytes": 435200
+      },
+      {
+        "id": "page-acc_head-0",
+        "size": "256x248",
+        "fill": 0.5139238911290323,
+        "gpuBytes": 337280
+      },
+      {
+        "id": "page-acc_weapon-0",
+        "size": "512x176",
+        "fill": 0.4490079012784091,
+        "gpuBytes": 478720
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6669291178385417,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      }
+    ]
+  },
+  {
+    "variant": "V3 V1 + every accessory in one group",
+    "totals": {
+      "pages": 3,
+      "pagePx": 3555328,
+      "imagePx": 2279244,
+      "fill": 0.6410784040178571,
+      "gpuBytes": 18887680,
+      "fileBytes": 2637370,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 18887680,
+      "minGpuBytes": 18887680,
+      "maxGpuBytes": 18887680,
+      "heroGpuBytes": 18887680
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 3,
+        "gpuBytes": 18887680
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 3,
+        "gpuBytes": 18887680
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 3,
+        "gpuBytes": 18887680
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 3,
+        "gpuBytes": 18887680
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-accessories-0",
+        "size": "1024x592",
+        "fill": 0.5380034575591216,
+        "gpuBytes": 3220480
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6669291178385417,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      }
+    ]
+  },
+  {
+    "variant": "V4 V1 + hair dyed (hair_long_* and hair_01 share one image set)",
+    "totals": {
+      "pages": 12,
+      "pagePx": 3469312,
+      "imagePx": 2179450,
+      "fill": 0.6282081288739669,
+      "gpuBytes": 18430720,
+      "fileBytes": 2507521,
+      "uniqueImages": 267
+    },
+    "looks": {
+      "meanGpuBytes": 16487129.899665551,
+      "minGpuBytes": 15841280,
+      "maxGpuBytes": 17081600,
+      "heroGpuBytes": 16472320
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 5,
+        "gpuBytes": 16472320
+      },
+      {
+        "count": 20,
+        "distinctLooks": 15,
+        "residentPages": 10,
+        "gpuBytes": 18082560
+      },
+      {
+        "count": 100,
+        "distinctLooks": 36,
+        "residentPages": 10,
+        "gpuBytes": 18082560
+      },
+      {
+        "count": 300,
+        "distinctLooks": 37,
+        "residentPages": 10,
+        "gpuBytes": 18082560
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6669291178385417,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x192",
+        "fill": 0.46343994140625,
+        "gpuBytes": 261120
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x256",
+        "fill": 0.4681243896484375,
+        "gpuBytes": 348160
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x288",
+        "fill": 0.4956461588541667,
+        "gpuBytes": 391680
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x120",
+        "fill": 0.4349283854166667,
+        "gpuBytes": 163200
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x176",
+        "fill": 0.4426491477272727,
+        "gpuBytes": 239360
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x168",
+        "fill": 0.47705078125,
+        "gpuBytes": 228480
+      }
+    ]
+  },
+  {
+    "variant": "V5 V1 with mipLevels 0 (no mip chains)",
+    "totals": {
+      "pages": 14,
+      "pagePx": 2705920,
+      "imagePx": 2279244,
+      "fill": 0.8423175851466415,
+      "gpuBytes": 10823680,
+      "fileBytes": 2635898,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 9197746.086956521,
+      "minGpuBytes": 8763392,
+      "maxGpuBytes": 9496576,
+      "heroGpuBytes": 9496576
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 9496576
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 10663936
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 10663936
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 10663936
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x544",
+        "fill": 0.8827003030215993,
+        "gpuBytes": 4456448
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x516",
+        "fill": 0.9175855059956395,
+        "gpuBytes": 4227072
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "256x300",
+        "fill": 0.6497005208333333,
+        "gpuBytes": 307200
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x116",
+        "fill": 0.7670730064655172,
+        "gpuBytes": 118784
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "256x300",
+        "fill": 0.6497005208333333,
+        "gpuBytes": 307200
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "256x300",
+        "fill": 0.6497005208333333,
+        "gpuBytes": 307200
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x172",
+        "fill": 0.6967432776162791,
+        "gpuBytes": 176128
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x256",
+        "fill": 0.5576019287109375,
+        "gpuBytes": 262144
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x96",
+        "fill": 0.5436604817708334,
+        "gpuBytes": 98304
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 79872
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 79872
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 79872
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x160",
+        "fill": 0.4869140625,
+        "gpuBytes": 163840
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x156",
+        "fill": 0.5137469951923077,
+        "gpuBytes": 159744
+      }
+    ]
+  },
+  {
+    "variant": "V6.1 V1 with mipLevels 1",
+    "totals": {
+      "pages": 14,
+      "pagePx": 2718208,
+      "imagePx": 2279244,
+      "fill": 0.8385097829158034,
+      "gpuBytes": 13591040,
+      "fileBytes": 2636068,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 11541533.110367892,
+      "minGpuBytes": 10995200,
+      "maxGpuBytes": 11916800,
+      "heroGpuBytes": 11916800
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 11916800
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 13391360
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 13391360
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 13391360
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x548",
+        "fill": 0.8762572351163321,
+        "gpuBytes": 5611520
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x516",
+        "fill": 0.9175855059956395,
+        "gpuBytes": 5283840
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "256x304",
+        "fill": 0.6411518297697368,
+        "gpuBytes": 389120
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x116",
+        "fill": 0.7670730064655172,
+        "gpuBytes": 148480
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "256x304",
+        "fill": 0.6411518297697368,
+        "gpuBytes": 389120
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "256x304",
+        "fill": 0.6411518297697368,
+        "gpuBytes": 389120
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x176",
+        "fill": 0.680908203125,
+        "gpuBytes": 225280
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x256",
+        "fill": 0.5576019287109375,
+        "gpuBytes": 327680
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x96",
+        "fill": 0.5436604817708334,
+        "gpuBytes": 122880
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 99840
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 99840
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 99840
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x160",
+        "fill": 0.4869140625,
+        "gpuBytes": 204800
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x156",
+        "fill": 0.5137469951923077,
+        "gpuBytes": 199680
+      }
+    ]
+  },
+  {
+    "variant": "V6.2 V1 with mipLevels 2",
+    "totals": {
+      "pages": 14,
+      "pagePx": 3479552,
+      "imagePx": 2279244,
+      "fill": 0.6550394993378458,
+      "gpuBytes": 18267648,
+      "fileBytes": 2640881,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 15661133.056856187,
+      "minGpuBytes": 14993664,
+      "maxGpuBytes": 16117248,
+      "heroGpuBytes": 16117248
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 16117248
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 18041856
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 18041856
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 18041856
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x692",
+        "fill": 0.6939146890805635,
+        "gpuBytes": 7440384
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x692",
+        "fill": 0.6842111576499278,
+        "gpuBytes": 7440384
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "512x204",
+        "fill": 0.4777209712009804,
+        "gpuBytes": 548352
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x176",
+        "fill": 0.5055708451704546,
+        "gpuBytes": 236544
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "512x204",
+        "fill": 0.4777209712009804,
+        "gpuBytes": 548352
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "512x204",
+        "fill": 0.4777209712009804,
+        "gpuBytes": 548352
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x180",
+        "fill": 0.6657769097222223,
+        "gpuBytes": 241920
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x264",
+        "fill": 0.5407049005681818,
+        "gpuBytes": 354816
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x100",
+        "fill": 0.5219140625,
+        "gpuBytes": 134400
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "128x168",
+        "fill": 0.5057663690476191,
+        "gpuBytes": 112896
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "128x168",
+        "fill": 0.5057663690476191,
+        "gpuBytes": 112896
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "128x168",
+        "fill": 0.5057663690476191,
+        "gpuBytes": 112896
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x164",
+        "fill": 0.47503810975609756,
+        "gpuBytes": 220416
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x160",
+        "fill": 0.5009033203125,
+        "gpuBytes": 215040
+      }
+    ]
+  },
+  {
+    "variant": "V1s body_navy on its own pages + shared-image pages",
+    "totals": {
+      "pages": 15,
+      "pagePx": 3745792,
+      "imagePx": 2279244,
+      "fill": 0.6084811970338984,
+      "gpuBytes": 19899520,
+      "fileBytes": 2636049,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 9010313.846153846,
+      "minGpuBytes": 8257920,
+      "maxGpuBytes": 9498240,
+      "heroGpuBytes": 9498240
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 9498240
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 11717760
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 11717760
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 11717760
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-shared-body_navy-core-0",
+        "size": "256x184",
+        "fill": 0.29194972826086957,
+        "gpuBytes": 250240
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x192",
+        "fill": 0.46343994140625,
+        "gpuBytes": 261120
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x256",
+        "fill": 0.4681243896484375,
+        "gpuBytes": 348160
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x288",
+        "fill": 0.4956461588541667,
+        "gpuBytes": 391680
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x120",
+        "fill": 0.4349283854166667,
+        "gpuBytes": 163200
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x176",
+        "fill": 0.4426491477272727,
+        "gpuBytes": 239360
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x168",
+        "fill": 0.47705078125,
+        "gpuBytes": 228480
+      }
+    ]
+  },
+  {
+    "variant": "V2s V1 + one page group per accessory slot + shared-image pages",
+    "totals": {
+      "pages": 7,
+      "pagePx": 3567616,
+      "imagePx": 2279244,
+      "fill": 0.6388703268513203,
+      "gpuBytes": 18952960,
+      "fileBytes": 2632849,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 10529729.49832776,
+      "minGpuBytes": 8421120,
+      "maxGpuBytes": 11119360,
+      "heroGpuBytes": 11119360
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 11119360
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 6,
+        "gpuBytes": 11119360
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 6,
+        "gpuBytes": 11119360
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 6,
+        "gpuBytes": 11119360
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-shared-body_navy-core-0",
+        "size": "256x184",
+        "fill": 0.29194972826086957,
+        "gpuBytes": 250240
+      },
+      {
+        "id": "page-acc_hair-0",
+        "size": "1024x328",
+        "fill": 0.6048405344893293,
+        "gpuBytes": 1784320
+      },
+      {
+        "id": "page-acc_hat-0",
+        "size": "512x160",
+        "fill": 0.6091796875,
+        "gpuBytes": 435200
+      },
+      {
+        "id": "page-acc_head-0",
+        "size": "256x248",
+        "fill": 0.5139238911290323,
+        "gpuBytes": 337280
+      },
+      {
+        "id": "page-acc_weapon-0",
+        "size": "512x176",
+        "fill": 0.4490079012784091,
+        "gpuBytes": 478720
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      }
+    ]
+  },
+  {
+    "variant": "V3s V1 + every accessory in one group + shared-image pages",
+    "totals": {
+      "pages": 4,
+      "pagePx": 3602432,
+      "imagePx": 2279244,
+      "fill": 0.6326959120949404,
+      "gpuBytes": 19137920,
+      "fileBytes": 2636821,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 11304320,
+      "minGpuBytes": 11304320,
+      "maxGpuBytes": 11304320,
+      "heroGpuBytes": 11304320
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 3,
+        "gpuBytes": 11304320
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 3,
+        "gpuBytes": 11304320
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 3,
+        "gpuBytes": 11304320
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 3,
+        "gpuBytes": 11304320
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-shared-body_navy-core-0",
+        "size": "256x184",
+        "fill": 0.29194972826086957,
+        "gpuBytes": 250240
+      },
+      {
+        "id": "page-accessories-0",
+        "size": "1024x592",
+        "fill": 0.5380034575591216,
+        "gpuBytes": 3220480
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      }
+    ]
+  },
+  {
+    "variant": "V4s V1 + hair dyed (hair_long_* and hair_01 share one image set) + shared-image pages",
+    "totals": {
+      "pages": 13,
+      "pagePx": 3516416,
+      "imagePx": 2179450,
+      "fill": 0.6197929937754805,
+      "gpuBytes": 18680960,
+      "fileBytes": 2506972,
+      "uniqueImages": 267
+    },
+    "looks": {
+      "meanGpuBytes": 8903769.899665551,
+      "minGpuBytes": 8257920,
+      "maxGpuBytes": 9498240,
+      "heroGpuBytes": 8888960
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 5,
+        "gpuBytes": 8888960
+      },
+      {
+        "count": 20,
+        "distinctLooks": 15,
+        "residentPages": 10,
+        "gpuBytes": 10499200
+      },
+      {
+        "count": 100,
+        "distinctLooks": 36,
+        "residentPages": 10,
+        "gpuBytes": 10499200
+      },
+      {
+        "count": 300,
+        "distinctLooks": 37,
+        "residentPages": 10,
+        "gpuBytes": 10499200
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-shared-body_navy-core-0",
+        "size": "256x184",
+        "fill": 0.29194972826086957,
+        "gpuBytes": 250240
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x720",
+        "fill": 0.6576029459635416,
+        "gpuBytes": 7833600
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x192",
+        "fill": 0.46343994140625,
+        "gpuBytes": 261120
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "512x224",
+        "fill": 0.4350673130580357,
+        "gpuBytes": 609280
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x256",
+        "fill": 0.4681243896484375,
+        "gpuBytes": 348160
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x288",
+        "fill": 0.4956461588541667,
+        "gpuBytes": 391680
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x120",
+        "fill": 0.4349283854166667,
+        "gpuBytes": 163200
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "256x128",
+        "fill": 0.3319091796875,
+        "gpuBytes": 174080
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x176",
+        "fill": 0.4426491477272727,
+        "gpuBytes": 239360
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x168",
+        "fill": 0.47705078125,
+        "gpuBytes": 228480
+      }
+    ]
+  },
+  {
+    "variant": "V5s V1 with mipLevels 0 (no mip chains) + shared-image pages",
+    "totals": {
+      "pages": 15,
+      "pagePx": 2675200,
+      "imagePx": 2279244,
+      "fill": 0.8519901315789473,
+      "gpuBytes": 10700800,
+      "fileBytes": 2634055,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 4847794.0869565215,
+      "minGpuBytes": 4413440,
+      "maxGpuBytes": 5146624,
+      "heroGpuBytes": 5146624
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 5146624
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 6313984
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 6313984
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 6313984
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-shared-body_navy-core-0",
+        "size": "256x104",
+        "fill": 0.5165264423076923,
+        "gpuBytes": 106496
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x516",
+        "fill": 0.9175855059956395,
+        "gpuBytes": 4227072
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x516",
+        "fill": 0.9175855059956395,
+        "gpuBytes": 4227072
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "256x300",
+        "fill": 0.6497005208333333,
+        "gpuBytes": 307200
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x116",
+        "fill": 0.7670730064655172,
+        "gpuBytes": 118784
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "256x300",
+        "fill": 0.6497005208333333,
+        "gpuBytes": 307200
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "256x300",
+        "fill": 0.6497005208333333,
+        "gpuBytes": 307200
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x172",
+        "fill": 0.6967432776162791,
+        "gpuBytes": 176128
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x256",
+        "fill": 0.5576019287109375,
+        "gpuBytes": 262144
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x96",
+        "fill": 0.5436604817708334,
+        "gpuBytes": 98304
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 79872
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 79872
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 79872
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x160",
+        "fill": 0.4869140625,
+        "gpuBytes": 163840
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x156",
+        "fill": 0.5137469951923077,
+        "gpuBytes": 159744
+      }
+    ]
+  },
+  {
+    "variant": "V6.1s V1 with mipLevels 1 + shared-image pages",
+    "totals": {
+      "pages": 15,
+      "pagePx": 2679296,
+      "imagePx": 2279244,
+      "fill": 0.8506876433212307,
+      "gpuBytes": 13396480,
+      "fileBytes": 2634118,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 6063133.110367893,
+      "minGpuBytes": 5516800,
+      "maxGpuBytes": 6438400,
+      "heroGpuBytes": 6438400
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 6438400
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 7912960
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 7912960
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 7912960
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-shared-body_navy-core-0",
+        "size": "256x104",
+        "fill": 0.5165264423076923,
+        "gpuBytes": 133120
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x516",
+        "fill": 0.9175855059956395,
+        "gpuBytes": 5283840
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x516",
+        "fill": 0.9175855059956395,
+        "gpuBytes": 5283840
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "256x304",
+        "fill": 0.6411518297697368,
+        "gpuBytes": 389120
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x116",
+        "fill": 0.7670730064655172,
+        "gpuBytes": 148480
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "256x304",
+        "fill": 0.6411518297697368,
+        "gpuBytes": 389120
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "256x304",
+        "fill": 0.6411518297697368,
+        "gpuBytes": 389120
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x176",
+        "fill": 0.680908203125,
+        "gpuBytes": 225280
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x256",
+        "fill": 0.5576019287109375,
+        "gpuBytes": 327680
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x96",
+        "fill": 0.5436604817708334,
+        "gpuBytes": 122880
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 99840
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 99840
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "128x156",
+        "fill": 0.5446714743589743,
+        "gpuBytes": 99840
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x160",
+        "fill": 0.4869140625,
+        "gpuBytes": 204800
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x156",
+        "fill": 0.5137469951923077,
+        "gpuBytes": 199680
+      }
+    ]
+  },
+  {
+    "variant": "V6.2s V1 with mipLevels 2 + shared-image pages",
+    "totals": {
+      "pages": 15,
+      "pagePx": 3510272,
+      "imagePx": 2279244,
+      "fill": 0.6493069482934656,
+      "gpuBytes": 18428928,
+      "fileBytes": 2640734,
+      "uniqueImages": 283
+    },
+    "looks": {
+      "meanGpuBytes": 8382029.056856187,
+      "minGpuBytes": 7714560,
+      "maxGpuBytes": 8838144,
+      "heroGpuBytes": 8838144
+    },
+    "crowds": [
+      {
+        "count": 1,
+        "distinctLooks": 1,
+        "residentPages": 6,
+        "gpuBytes": 8838144
+      },
+      {
+        "count": 20,
+        "distinctLooks": 18,
+        "residentPages": 12,
+        "gpuBytes": 10762752
+      },
+      {
+        "count": 100,
+        "distinctLooks": 46,
+        "residentPages": 12,
+        "gpuBytes": 10762752
+      },
+      {
+        "count": 300,
+        "distinctLooks": 55,
+        "residentPages": 12,
+        "gpuBytes": 10762752
+      }
+    ],
+    "pages": [
+      {
+        "id": "page-shared-body_navy-core-0",
+        "size": "256x120",
+        "fill": 0.44765625,
+        "gpuBytes": 161280
+      },
+      {
+        "id": "page-body_navy-0",
+        "size": "2048x692",
+        "fill": 0.6842111576499278,
+        "gpuBytes": 7440384
+      },
+      {
+        "id": "page-core-0",
+        "size": "2048x692",
+        "fill": 0.6842111576499278,
+        "gpuBytes": 7440384
+      },
+      {
+        "id": "page-hair_01-0",
+        "size": "512x204",
+        "fill": 0.4777209712009804,
+        "gpuBytes": 548352
+      },
+      {
+        "id": "page-hair_bob-0",
+        "size": "256x176",
+        "fill": 0.5055708451704546,
+        "gpuBytes": 236544
+      },
+      {
+        "id": "page-hair_long_auburn-0",
+        "size": "512x204",
+        "fill": 0.4777209712009804,
+        "gpuBytes": 548352
+      },
+      {
+        "id": "page-hair_long_brown-0",
+        "size": "512x204",
+        "fill": 0.4777209712009804,
+        "gpuBytes": 548352
+      },
+      {
+        "id": "page-hair_ponytail-0",
+        "size": "256x180",
+        "fill": 0.6657769097222223,
+        "gpuBytes": 241920
+      },
+      {
+        "id": "page-hat_01-0",
+        "size": "256x264",
+        "fill": 0.5407049005681818,
+        "gpuBytes": 354816
+      },
+      {
+        "id": "page-hat_beret-0",
+        "size": "256x100",
+        "fill": 0.5219140625,
+        "gpuBytes": 134400
+      },
+      {
+        "id": "page-head_base-0",
+        "size": "128x168",
+        "fill": 0.5057663690476191,
+        "gpuBytes": 112896
+      },
+      {
+        "id": "page-head_blink-0",
+        "size": "128x168",
+        "fill": 0.5057663690476191,
+        "gpuBytes": 112896
+      },
+      {
+        "id": "page-head_face2-0",
+        "size": "128x168",
+        "fill": 0.5057663690476191,
+        "gpuBytes": 112896
+      },
+      {
+        "id": "page-weapon_01-0",
+        "size": "256x164",
+        "fill": 0.47503810975609756,
+        "gpuBytes": 220416
+      },
+      {
+        "id": "page-weapon_moon-0",
+        "size": "256x160",
+        "fill": 0.5009033203125,
+        "gpuBytes": 215040
+      }
+    ]
+  }
+]

@@ -1,0 +1,334 @@
+{
+  "kind": "uvce-baseline-benchmark",
+  "renderMode": "LAYERED",
+  "date": "2026-10-10T07:35:07.437Z",
+  "commit": "514eb4119ee9d972f15537def0553c4a8a7e4436",
+  "workingTree": "dirty",
+  "protocol": {
+    "counts": [
+      1,
+      20,
+      100,
+      300
+    ],
+    "runs": 2,
+    "warmupMs": 2000,
+    "measureMs": 10000,
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "seed": 20261009,
+    "extraQuery": "&mode=SHADER",
+    "dist": "dist-mage",
+    "chromiumArgs": [],
+    "scene": "stage scene, perspective camera framed per count, animation playing, MSAA on, overlay and side panel off (bench=1, canvas = full viewport)",
+    "aggregation": "per run: nearest-rank percentiles over all frames in the window; reported: median across runs"
+  },
+  "environment": {
+    "browser": "Chromium 141.0.7390.37",
+    "glVersion": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "glRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "glVendor": "Google Inc. (NVIDIA)",
+    "maxTextureSize": 16384,
+    "timerQuery": true,
+    "webgpuExposed": true,
+    "webgpuAdapter": "available",
+    "devicePixelRatio": 1.0000000298023224,
+    "pixelRatioUsed": 1.0000000298023224,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "hardwareConcurrency": 12,
+    "crossOriginIsolated": true,
+    "os": "win32 10.0.26200",
+    "cpu": "AMD Ryzen 5 5600 6-Core Processor               x12",
+    "memoryGiB": 127.9,
+    "node": "v24.18.0"
+  },
+  "assets": {
+    "manifestVersion": "m-337bda7075f854bc",
+    "stats": {
+      "sourceFrames": 331,
+      "uniqueImages": 283,
+      "dedupedFrames": 48,
+      "pageCount": 13,
+      "pageBytesRGBA8": 13549568,
+      "pageBytesWithMips": 18065500,
+      "pageFileBytes": 2626214,
+      "crossGroupSharedImages": 0
+    }
+  },
+  "scenarios": [
+    {
+      "count": 1,
+      "runs": 2,
+      "visibleCharacters": 1,
+      "visibleLayers": 7,
+      "uniqueAppearances": 1,
+      "drawCalls": 9,
+      "triangles": 236,
+      "samplesPerRun": [
+        600,
+        600
+      ],
+      "cpuUpdateMs": {
+        "p50": 0.125,
+        "p95": 0.218,
+        "p99": 0.273
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 0.285,
+        "p95": 0.385,
+        "p99": 0.468
+      },
+      "cpuTotalMs": {
+        "p50": 0.42,
+        "p95": 0.57,
+        "p99": 0.683
+      },
+      "rafIntervalMs": {
+        "p50": 16.675,
+        "p95": 16.717
+      },
+      "gpuTimerQueryMs": {
+        "p50": 6.902,
+        "p95": 9.92,
+        "samplesPerRun": [
+          600,
+          600
+        ]
+      },
+      "residentPages": 5,
+      "pageLoads": 5,
+      "sourceRGBA8MiB": 11.078,
+      "residentGpuEstimateMiB": 14.77,
+      "assetRequests": 6,
+      "pageRequests": 5,
+      "downloadedAssetKiB": 2319.043,
+      "timeToReadyMs": 461,
+      "renderMode": "SHADER",
+      "compositedCharacters": 1,
+      "cachedCharacters": 0,
+      "cacheHitRatio": null,
+      "frameCacheBakesLastFrame": 0,
+      "frameCachePauses": 0,
+      "frameCacheMiB": 0,
+      "poseUpdatesPerFrame": {
+        "mean": 0.089,
+        "p95": 1
+      },
+      "lodLevels": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "count": 20,
+      "runs": 2,
+      "visibleCharacters": 20,
+      "visibleLayers": 107,
+      "uniqueAppearances": 18,
+      "drawCalls": 47,
+      "triangles": 730,
+      "samplesPerRun": [
+        600,
+        600
+      ],
+      "cpuUpdateMs": {
+        "p50": 0.242,
+        "p95": 0.348,
+        "p99": 0.423
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 0.51,
+        "p95": 0.65,
+        "p99": 0.772
+      },
+      "cpuTotalMs": {
+        "p50": 0.75,
+        "p95": 0.98,
+        "p99": 1.14
+      },
+      "rafIntervalMs": {
+        "p50": 16.675,
+        "p95": 16.713
+      },
+      "gpuTimerQueryMs": {
+        "p50": 1.825,
+        "p95": 3.674,
+        "samplesPerRun": [
+          600,
+          600
+        ]
+      },
+      "residentPages": 11,
+      "pageLoads": 11,
+      "sourceRGBA8MiB": 12.672,
+      "residentGpuEstimateMiB": 16.895,
+      "assetRequests": 12,
+      "pageRequests": 11,
+      "downloadedAssetKiB": 2559.672,
+      "timeToReadyMs": 433.5,
+      "renderMode": "SHADER",
+      "compositedCharacters": 20,
+      "cachedCharacters": 0,
+      "cacheHitRatio": null,
+      "frameCacheBakesLastFrame": 0,
+      "frameCachePauses": 0,
+      "frameCacheMiB": 0,
+      "poseUpdatesPerFrame": {
+        "mean": 1.926,
+        "p95": 5
+      },
+      "lodLevels": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "count": 100,
+      "runs": 2,
+      "visibleCharacters": 100,
+      "visibleLayers": 548.5,
+      "uniqueAppearances": 45,
+      "drawCalls": 207,
+      "triangles": 2810,
+      "samplesPerRun": [
+        600,
+        600
+      ],
+      "cpuUpdateMs": {
+        "p50": 0.45,
+        "p95": 0.625,
+        "p99": 0.705
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 1.457,
+        "p95": 1.878,
+        "p99": 2.525
+      },
+      "cpuTotalMs": {
+        "p50": 1.915,
+        "p95": 2.428,
+        "p99": 3.278
+      },
+      "rafIntervalMs": {
+        "p50": 16.675,
+        "p95": 16.72
+      },
+      "gpuTimerQueryMs": {
+        "p50": 12.017,
+        "p95": 16.185,
+        "samplesPerRun": [
+          600,
+          600
+        ]
+      },
+      "residentPages": 11,
+      "pageLoads": 11,
+      "sourceRGBA8MiB": 12.672,
+      "residentGpuEstimateMiB": 16.895,
+      "assetRequests": 12,
+      "pageRequests": 11,
+      "downloadedAssetKiB": 2559.672,
+      "timeToReadyMs": 454.5,
+      "renderMode": "SHADER",
+      "compositedCharacters": 100,
+      "cachedCharacters": 0,
+      "cacheHitRatio": null,
+      "frameCacheBakesLastFrame": 0,
+      "frameCachePauses": 0,
+      "frameCacheMiB": 0,
+      "poseUpdatesPerFrame": {
+        "mean": 9.727,
+        "p95": 15
+      },
+      "lodLevels": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "count": 300,
+      "runs": 2,
+      "visibleCharacters": 300,
+      "visibleLayers": 1628,
+      "uniqueAppearances": 54,
+      "drawCalls": 606,
+      "triangles": 7986,
+      "samplesPerRun": [
+        600,
+        600
+      ],
+      "cpuUpdateMs": {
+        "p50": 0.933,
+        "p95": 1.245,
+        "p99": 1.498
+      },
+      "cpuRenderSubmitMs": {
+        "p50": 3.895,
+        "p95": 4.655,
+        "p99": 5.087
+      },
+      "cpuTotalMs": {
+        "p50": 4.843,
+        "p95": 5.755,
+        "p99": 6.238
+      },
+      "rafIntervalMs": {
+        "p50": 16.675,
+        "p95": 16.712
+      },
+      "gpuTimerQueryMs": {
+        "p50": 7.072,
+        "p95": 14.932,
+        "samplesPerRun": [
+          600,
+          600
+        ]
+      },
+      "residentPages": 11,
+      "pageLoads": 11,
+      "sourceRGBA8MiB": 12.672,
+      "residentGpuEstimateMiB": 16.895,
+      "assetRequests": 12,
+      "pageRequests": 11,
+      "downloadedAssetKiB": 2559.672,
+      "timeToReadyMs": 473,
+      "renderMode": "SHADER",
+      "compositedCharacters": 300,
+      "cachedCharacters": 0,
+      "cacheHitRatio": null,
+      "frameCacheBakesLastFrame": 0,
+      "frameCachePauses": 0,
+      "frameCacheMiB": 0,
+      "poseUpdatesPerFrame": {
+        "mean": 28.958,
+        "p95": 38
+      },
+      "lodLevels": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "caveats": [
+    "Rendered on the local GPU; results are specific to the recorded browser/GPU/driver.",
+    "CPU update = character prepare (resolve/cull/sort) + world update; CPU submit = three.js render() call on the main thread (command encoding, not GPU execution).",
+    "CPU submit can include command-buffer back-pressure when the (software) GPU process falls behind.",
+    "Draw calls include world props and one ground-shadow decal per visible character.",
+    "Byte figures are owner-calculated estimates, not measured VRAM: sourceRGBA8MiB = level 0 of resident pages; residentGpuEstimateMiB includes mip chains."
+  ]
+}
